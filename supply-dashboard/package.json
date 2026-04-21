@@ -1,0 +1,14 @@
+{
+  "name": "openhouse-supply-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod",
+    "db:setup": "node scripts/setup-db.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.9.0",
+    "jose": "^5.2.0"
+  }
+}

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - Openhouse Supply Dashboard</title>
+<link rel="icon" href="/favicon.png" type="image/x-icon">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif; background:#f9fafb; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+.card { background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.1); padding:40px; width:380px; text-align:center; }
+.logo { width:48px; height:48px; border-radius:10px; margin-bottom:16px; }
+h1 { font-size:20px; font-weight:700; color:#111827; margin-bottom:4px; }
+.subtitle { font-size:13px; color:#6b7280; margin-bottom:28px; }
+.google-btn-wrap { display:flex; justify-content:center; margin-bottom:16px; }
+.divider { font-size:11px; color:#9ca3af; margin:16px 0; }
+.msg { padding:10px 14px; border-radius:8px; font-size:13px; margin-top:16px; display:none; }
+.msg.error { display:block; background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+.msg.info { display:block; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+.msg.success { display:block; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+.request-btn { display:none; margin-top:12px; padding:8px 20px; background:#111827; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; }
+.request-btn:hover { background:#1f2937; }
+.request-btn.show { display:inline-block; }
+.footer { font-size:11px; color:#9ca3af; margin-top:24px; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <img src="/logo.png" class="logo" alt="Openhouse">
+  <h1>Supply Dashboard</h1>
+  <p class="subtitle">Sign in with your Openhouse Google account</p>
+
+  <div class="google-btn-wrap" id="googleBtnWrap">
+    <div style="color:#6b7280;font-size:12px">Loading...</div>
+  </div>
+
+  <div id="message" class="msg"></div>
+  <button id="requestBtn" class="request-btn" onclick="requestAccess()">Request Access</button>
+
+  <div class="footer">Only @openhouse.in accounts are allowed</div>
+</div>
+
+<script>
+let pendingUser = null;
+
+// Load Google Client ID from server, then init Google Sign-In
+async function loadGoogleSignIn() {
+  try {
+    const res = await fetch("/api/auth/config");
+    const { googleClientId } = await res.json();
+    if (!googleClientId) {
+      document.getElementById("googleBtnWrap").innerHTML = '<div style="color:#ef4444;font-size:12px">Google Client ID not configured</div>';
+      return;
+    }
+    // Init Google Identity Services
+    google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: handleGoogleLogin
+    });
+    google.accounts.id.renderButton(
+      document.getElementById("googleBtnWrap"),
+      { theme: "outline", size: "large", text: "signin_with", width: 300 }
+    );
+  } catch {
+    document.getElementById("googleBtnWrap").innerHTML = '<div style="color:#ef4444;font-size:12px">Failed to load sign-in</div>';
+  }
+}
+
+// Wait for Google script to load
+window.onload = function() { loadGoogleSignIn(); };
+
+async function handleGoogleLogin(response) {
+  const msgEl = document.getElementById("message");
+  const reqBtn = document.getElementById("requestBtn");
+
+  msgEl.className = "msg info";
+  msgEl.textContent = "Signing in...";
+  reqBtn.className = "request-btn";
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ credential: response.credential })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      msgEl.className = "msg success";
+      msgEl.textContent = "Welcome! Redirecting...";
+      setTimeout(() => { window.location.href = "/"; }, 500);
+    } else if (res.status === 403) {
+      // Not whitelisted
+      pendingUser = { email: data.email, name: data.name, picture: data.picture };
+      msgEl.className = "msg error";
+      msgEl.textContent = data.email + " doesn't have access yet.";
+      reqBtn.className = "request-btn show";
+    } else {
+      msgEl.className = "msg error";
+      msgEl.textContent = data.error || "Login failed";
+    }
+  } catch (err) {
+    msgEl.className = "msg error";
+    msgEl.textContent = "Something went wrong. Try again.";
+  }
+}
+
+async function requestAccess() {
+  if (!pendingUser) return;
+  const msgEl = document.getElementById("message");
+  const reqBtn = document.getElementById("requestBtn");
+
+  reqBtn.disabled = true;
+  reqBtn.textContent = "Submitting...";
+
+  try {
+    const res = await fetch("/api/auth/request-access", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(pendingUser)
+    });
+
+    const data = await res.json();
+    msgEl.className = "msg success";
+    msgEl.textContent = "Access request sent! An admin will review it shortly.";
+    reqBtn.style.display = "none";
+  } catch {
+    msgEl.className = "msg error";
+    msgEl.textContent = "Failed to submit request.";
+    reqBtn.disabled = false;
+    reqBtn.textContent = "Request Access";
+  }
+}
+
+// Check if already logged in
+fetch("/api/auth/me").then(r => {
+  if (r.ok) window.location.href = "/";
+});
+</script>
+</body>
+</html>
