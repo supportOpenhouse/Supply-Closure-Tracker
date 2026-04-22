@@ -169,35 +169,19 @@ module.exports = async function handler(req, res) {
       console.error("team_directory query failed:", teamErr.message);
     }
 
-    // Step 5: Normalize POC names (must match client-side POC_NAME_MAP exactly)
-    const POC_NAME_MAP = {
-      "abhishek": "Abhishek Rathore",
-      "animesh": "Animesh Singh",
-      "apurv": "Apurv Nath",
-      "apurva": "Apurv Nath",
-      "nishant": "Nishant Kumar",
-      "rahulsheel": "Rahul Sheel",
-      "rupali": "Rupali Prasad",
-      "shashank": "Shashank Kumar",
-      "sushmita": "Sushmita Roy",
-      "kavita": "Kavita Rawat",
-      "arti": "Arti Ahirwar",
-      "sahil": "Sahil Singh",
-      "nisha": "Nisha Deewan",
-      "praveen": "Praveen Kumar",
-      "aman": "Aman Dixit",
-      "sahaj": "Sahaj Dureja",
-      "saransh": "Saransh Khera",
-      "saurabh": "Saurabh",
-      "prashant": "Prashant",
-      "rahool": "Rahool",
-      "ashish": "Ashish",
-      "ankit": "Ankit",
-      "vaibhav": "Vaibhav Dwivedi",
-      "deepak": "Deepak Mishra",
-      "ashwani": "Ashwani Sharma",
-      "priyesh": "Priyesh Kumar",
-    };
+    // Step 5: Normalize POC names — auto-derived from team_directory display_name
+    // Build alias map: first-word-lower + no-space-lower → display_name
+    const aliasToName = {};
+    teamRows.forEach(t => {
+      const full = (t.display_name || "").trim();
+      if (!full) return;
+      const firstLower = full.split(" ")[0].toLowerCase();
+      const noSpaceLower = full.toLowerCase().replace(/\s+/g, "");
+      aliasToName[firstLower] = full;
+      aliasToName[noSpaceLower] = full;
+      aliasToName[full.toLowerCase()] = full;
+    });
+
     const POC_REMOVE = ["oh sold", "oh_sold"];
 
     function cleanPoc(name) {
@@ -207,24 +191,16 @@ module.exports = async function handler(req, res) {
       // Handle "Shashank / Rupali" → normalize each part
       if (trimmed.includes("/")) {
         return trimmed.split("/").map(s => {
-          const k = s.trim().toLowerCase().replace(/\s+/g, "");
-          return POC_NAME_MAP[k] || s.trim();
+          const part = s.trim();
+          const noSpace = part.toLowerCase().replace(/\s+/g, "");
+          return aliasToName[noSpace] || aliasToName[part.toLowerCase()] || part;
         }).join(" / ");
       }
       // Try no-space match (catches "RahulSheel" → "rahulsheel")
       const noSpace = trimmed.toLowerCase().replace(/\s+/g, "");
-      if (POC_NAME_MAP[noSpace]) return POC_NAME_MAP[noSpace];
-      // Try lowercase match
+      if (aliasToName[noSpace]) return aliasToName[noSpace];
       const lower = trimmed.toLowerCase();
-      if (POC_NAME_MAP[lower]) return POC_NAME_MAP[lower];
-      // Try team_directory first-name match as fallback
-      if (teamRows.length > 0) {
-        const match = teamRows.find(t => {
-          const full = (t.display_name || "").trim();
-          return full.split(" ")[0].toLowerCase() === lower && full.includes(" ");
-        });
-        if (match) return match.display_name.trim();
-      }
+      if (aliasToName[lower]) return aliasToName[lower];
       return trimmed;
     }
 
@@ -233,55 +209,22 @@ module.exports = async function handler(req, res) {
       if (p.fieldExec) p.fieldExec = cleanPoc(p.fieldExec);
     });
 
-    // Step 6: Apply visibility filtering using email → POC name mapping
+    // Step 6: Apply visibility filtering from team_directory
     if (user.role === "admin" || user.role === "demand") {
       return res.status(200).json(allProperties);
     }
 
-    // Email → POC display names
-    const EMAIL_TO_NAMES = {
-      'sahaj.dureja@openhouse.in': ['Sahaj Dureja'],
-      'saransh.khera@openhouse.in': ['Saransh Khera'],
-      'ashish@openhouse.in': ['Ashish'],
-      'sushmita.roy@openhouse.in': ['Sushmita Roy'],
-      'arti.ahirwar@openhouse.in': ['Arti Ahirwar'],
-      'abhishek.rathore@openhouse.in': ['Abhishek Rathore'],
-      'animesh.singh@openhouse.in': ['Animesh Singh'],
-      'kavita.rawat@openhouse.in': ['Kavita Rawat'],
-      'prashant@openhouse.in': ['Prashant'],
-      'rahool@openhouse.in': ['Rahool'],
-      'rupali.prasad@openhouse.in': ['Rupali Prasad'],
-      'saurabh@openhouse.in': ['Saurabh'],
-      'shashank.kumar@openhouse.in': ['Shashank Kumar'],
-      'sahil.singh@openhouse.in': ['Sahil Singh'],
-      'rahul.sheel@openhouse.in': ['Rahul Sheel'],
-      'rahul.singh@openhouse.in': ['Rahul Singh'],
-      'praveen.kumar@openhouse.in': ['Praveen Kumar'],
-      'nishant.kumar@openhouse.in': ['Nishant Kumar'],
-      'ankit@openhouse.in': ['Ankit'],
-      'vaibhav.dwivedi@openhouse.in': ['Vaibhav Dwivedi'],
-      'aman.dixit@openhouse.in': ['Aman Dixit'],
-      'deepak.mishra@openhouse.in': ['Deepak Mishra'],
-      'nisha.deewan@openhouse.in': ['Nisha Deewan'],
-      'ashwani.sharma@openhouse.in': ['Ashwani Sharma'],
-      'deepak.rana@openhouse.in': ['Deepak Rana'],
-      'apurv.nath@openhouse.in': ['Apurv Nath'],
-      'priyesh.kumar@openhouse.in': ['Priyesh Kumar']
-    };
-
-    // Manager email → team member display names they can also see
-    const TEAMS = {
-      'abhishek.rathore@openhouse.in': ['Aman Dixit','Arti Ahirwar','Kavita Rawat','Sahil Singh'],
-      'animesh.singh@openhouse.in': ['Nishant Kumar','Rahul Sheel','Sushmita Roy'],
-      'ashish@openhouse.in': ['Aman Dixit','Sahil Singh'],
-      'shashank.kumar@openhouse.in': ['Deepak Mishra','Deepak Rana','Apurv Nath','Priyesh Kumar','Rupali Prasad'],
-    };
-
     const userEmail = user.email.toLowerCase();
 
-    // Build list of POC names this user can see
-    const myNames = (EMAIL_TO_NAMES[userEmail] || []).map(n => n.toLowerCase());
-    const teamNames = (TEAMS[userEmail] || []).map(n => n.toLowerCase());
+    // Non-admin/non-demand users: see their own properties + their team's
+    // Own: rows in team_directory where email = userEmail
+    // Team: rows in team_directory where manager_email = userEmail
+    const myNames = teamRows
+      .filter(t => (t.email || "").toLowerCase() === userEmail)
+      .map(t => (t.display_name || "").trim().toLowerCase());
+    const teamNames = teamRows
+      .filter(t => (t.manager_email || "").toLowerCase() === userEmail)
+      .map(t => (t.display_name || "").trim().toLowerCase());
     const visibleNames = [...new Set([...myNames, ...teamNames])];
 
     if (visibleNames.length === 0) {

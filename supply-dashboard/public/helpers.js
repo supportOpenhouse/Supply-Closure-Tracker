@@ -58,40 +58,42 @@ function getBalconyView(p) {
   return [...new Set(bd.map(b => b.view))].join(", ");
 }
 
-// Name cleanup: normalize POC / field exec names
-const POC_NAME_MAP = {
-  "abhishek": "Abhishek Rathore",
-  "animesh": "Animesh Singh",
-  "apurv": "Apurv Nath",
-  "apurva": "Apurv Nath",
-  "nishant": "Nishant Kumar",
-  "rahulsheel": "Rahul Sheel",
-  "rupali": "Rupali Prasad",
-  "shashank": "Shashank Kumar",
-  "sushmita": "Sushmita Roy",
-  "kavita": "Kavita Rawat",
-  "arti": "Arti Ahirwar",
-  "sahil": "Sahil Singh",
-  "nisha": "Nisha Deewan",
-  "praveen": "Praveen Kumar",
-  "aman": "Aman Dixit",
-  "priyesh": "Priyesh Kumar",
-};
+// Name cleanup: normalize POC / field exec names — derived from adminTeam (team_directory)
 const POC_REMOVE = ["oh sold", "oh_sold", ""];
+
+function buildAliasMap() {
+  var map = {};
+  if (typeof adminTeam !== "undefined" && adminTeam && adminTeam.length > 0) {
+    adminTeam.forEach(function(t) {
+      var full = (t.display_name || "").trim();
+      if (!full) return;
+      var firstLower = full.split(" ")[0].toLowerCase();
+      var noSpaceLower = full.toLowerCase().replace(/\s+/g, "");
+      map[firstLower] = full;
+      map[noSpaceLower] = full;
+      map[full.toLowerCase()] = full;
+    });
+  }
+  return map;
+}
 
 function cleanPocName(name) {
   if (!name) return "";
   var trimmed = name.trim();
   if (POC_REMOVE.includes(trimmed.toLowerCase())) return "";
+  var aliasMap = buildAliasMap();
   if (trimmed.includes("/")) {
     var parts = trimmed.split("/").map(function(s){return s.trim()});
-    parts = parts.map(function(p) { return POC_NAME_MAP[p.toLowerCase()] || p; });
+    parts = parts.map(function(p) {
+      var noSpace = p.toLowerCase().replace(/\s+/g, "");
+      return aliasMap[noSpace] || aliasMap[p.toLowerCase()] || p;
+    });
     return parts.join(" / ");
   }
   var lower = trimmed.toLowerCase().replace(/\s+/g, "");
-  if (POC_NAME_MAP[lower]) return POC_NAME_MAP[lower];
+  if (aliasMap[lower]) return aliasMap[lower];
   var lowerSpaced = trimmed.toLowerCase().trim();
-  if (POC_NAME_MAP[lowerSpaced]) return POC_NAME_MAP[lowerSpaced];
+  if (aliasMap[lowerSpaced]) return aliasMap[lowerSpaced];
   return trimmed;
 }
 
@@ -217,4 +219,3 @@ function getCounts() {
   DATA.forEach(p => { const s = getStatus(p); c[s] = (c[s]||0) + 1; });
   return c;
 }
-
