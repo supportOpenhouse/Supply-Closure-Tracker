@@ -40,6 +40,7 @@ body { background:#f9fafb; color:#111827; font-size:13px }
 .chip-whatsapp { background:#dcfce7; color:#166534 }
 .chip-admin { background:#fce7f3; color:#9f1239 }
 .chip-schedule { background:#f3e8ff; color:#6b21a8 }
+.chip-yes_no_button { background:#fef9c3; color:#854d0e }
 .chip-default { background:#f3f4f6; color:#374151 }
 .stats { padding:8px 20px; background:#fffbeb; border-bottom:1px solid #fde68a; font-size:11px; color:#92400e; display:none }
 .stats.show { display:block }
@@ -335,18 +336,29 @@ function renderDetails(category, details) {
   if (cat === "whatsapp") {
     let h = '<div class="details-main"><b>Template:</b> <span class="mono">' + esc(d.template || "—") + '</span></div>';
     if (d.recipients && d.recipients.length) {
-      const ok = d.recipients.filter(r => r.ok).length;
-      const fail = d.recipients.length - ok;
+      // ok=false means sent, ok=true means failed (per user's data semantics)
+      const sent = d.recipients.filter(r => r.ok === false).length;
+      const failed = d.recipients.length - sent;
       h += '<div class="details-meta">' + d.recipients.length + ' recipient' + (d.recipients.length !== 1 ? 's' : '');
-      if (fail > 0) h += ' <span style="color:#dc2626">(' + fail + ' failed)</span>';
-      if (ok > 0) h += ' <span style="color:#059669">(' + ok + ' sent)</span>';
+      if (sent > 0) h += ' <span style="color:#059669">(' + sent + ' sent)</span>';
+      if (failed > 0) h += ' <span style="color:#dc2626">(' + failed + ' failed)</span>';
       h += '</div>';
       h += '<div class="json-snippet">';
       d.recipients.forEach(function(r) {
-        h += (r.ok ? "&#10003; " : "&times; ") + esc(r.name || "") + " (" + esc(r.phone || "") + ")\n";
+        h += (r.ok === false ? "&#10003; " : "&times; ") + esc(r.name || "") + " (" + esc(r.phone || "") + ")\n";
       });
       h += '</div>';
     }
+    return h;
+  }
+
+  if (cat === "yes_no_button") {
+    let h = '<div class="details-main">';
+    h += '<b>' + esc(d.field || "—") + ':</b> ';
+    const val = (d.value || "").toString();
+    const color = val.toLowerCase() === "yes" ? "#059669" : (val.toLowerCase() === "no" ? "#dc2626" : "#6b7280");
+    h += '<span style="color:' + color + ';font-weight:600">' + esc(val || "—") + '</span>';
+    h += '</div>';
     return h;
   }
 
