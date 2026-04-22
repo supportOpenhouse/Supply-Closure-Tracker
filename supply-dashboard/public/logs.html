@@ -47,6 +47,10 @@ body { background:#f9fafb; color:#111827; font-size:13px }
 table { width:100%; border-collapse:collapse; background:#fff }
 thead { position:sticky; top:0; background:#f9fafb; z-index:10 }
 th { text-align:left; padding:10px 12px; font-size:10px; font-weight:600; color:#6b7280; text-transform:uppercase; border-bottom:1px solid #e5e7eb; white-space:nowrap }
+th.sortable { cursor:pointer; user-select:none }
+th.sortable:hover { background:#f3f4f6 }
+.sort-icon { font-size:9px; color:#d1d5db; margin-left:4px }
+.sort-icon.active { color:#111827 }
 td { padding:10px 12px; border-bottom:1px solid #f3f4f6; vertical-align:top; font-size:12px }
 tr:hover td { background:#f9fafb }
 .mono { font-family:'SF Mono',Monaco,monospace; font-size:11px }
@@ -95,7 +99,9 @@ let state = {
   dashboards: [],
   from: "",
   to: "",
-  msOpen: null
+  msOpen: null,
+  sortCol: "created_at",
+  sortDir: "desc"
 };
 
 function esc(s) { return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -268,10 +274,40 @@ function renderTable() {
     document.getElementById("tableWrap").innerHTML = '<div class="empty">No logs match the current filters.</div>';
     return;
   }
+  // Sort
+  const sortedLogs = [...allLogs].sort(function(a, b) {
+    const col = state.sortCol;
+    const dir = state.sortDir === "asc" ? 1 : -1;
+    let va = a[col], vb = b[col];
+    if (col === "created_at") { va = new Date(va||0).getTime(); vb = new Date(vb||0).getTime(); return (va - vb) * dir; }
+    va = (va || "").toString().toLowerCase();
+    vb = (vb || "").toString().toLowerCase();
+    if (!va && vb) return -1 * dir;
+    if (va && !vb) return 1 * dir;
+    return va.localeCompare(vb) * dir;
+  });
+
+  const cols = [
+    {k:"created_at", l:"Timestamp"},
+    {k:"uid", l:"UID"},
+    {k:"actor_name", l:"Actor"},
+    {k:"action", l:"Action"},
+    {k:"category", l:"Category"},
+    {k:"dashboard", l:"Dashboard"},
+    {k:"details", l:"Details", noSort:true}
+  ];
   let h = '<table><thead><tr>';
-  h += '<th>Timestamp</th><th>UID</th><th>Actor</th><th>Action</th><th>Category</th><th>Dashboard</th><th>Details</th>';
+  cols.forEach(function(c) {
+    if (c.noSort) {
+      h += '<th>' + esc(c.l) + '</th>';
+    } else {
+      const isActive = state.sortCol === c.k;
+      const icon = isActive ? (state.sortDir === "asc" ? "\u25B2" : "\u25BC") : "\u25B2";
+      h += '<th class="sortable" onclick="toggleSort(\'' + c.k + '\')">' + esc(c.l) + ' <span class="sort-icon' + (isActive ? ' active' : '') + '">' + icon + '</span></th>';
+    }
+  });
   h += '</tr></thead><tbody>';
-  allLogs.forEach(function(log) {
+  sortedLogs.forEach(function(log) {
     h += '<tr>';
     h += '<td class="timestamp mono">' + formatDate(log.created_at) + '</td>';
     h += '<td class="uid">' + esc(log.uid || "—") + '</td>';
@@ -284,6 +320,16 @@ function renderTable() {
   });
   h += '</tbody></table>';
   document.getElementById("tableWrap").innerHTML = h;
+}
+
+function toggleSort(col) {
+  if (state.sortCol === col) {
+    state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+  } else {
+    state.sortCol = col;
+    state.sortDir = "asc";
+  }
+  renderTable();
 }
 
 function formatDate(val) {
