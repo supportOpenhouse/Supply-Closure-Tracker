@@ -210,6 +210,7 @@ const POC_NAME_MAP = {
   "nisha": "Nisha Deewan",
   "praveen": "Praveen Kumar",
   "aman": "Aman Dixit",
+  "priyesh": "Priyesh Kumar",
 };
 const POC_REMOVE = ["oh sold", "oh_sold", ""];
 
