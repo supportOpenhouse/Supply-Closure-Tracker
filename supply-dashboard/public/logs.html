@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Logs - Openhouse</title>
+<link rel="icon" href="/favicon.png" type="image/png">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif }
+body { background:#f9fafb; color:#111827; font-size:13px }
+.header { background:#fff; border-bottom:1px solid #e5e7eb; padding:14px 20px; display:flex; align-items:center; justify-content:space-between }
+.header-left { display:flex; align-items:center; gap:10px }
+.logo { width:30px; height:30px; border-radius:6px }
+.header h1 { font-size:16px; font-weight:700 }
+.header .subtitle { font-size:11px; color:#6b7280 }
+.user-bar { display:flex; align-items:center; gap:10px; font-size:12px }
+.user-bar button { padding:4px 10px; font-size:11px; border:1px solid #e5e7eb; background:#fff; border-radius:5px; cursor:pointer }
+.user-bar button:hover { background:#f3f4f6 }
+.user-bar .primary { background:#111827; color:#fff; border-color:#111827 }
+.user-bar .primary:hover { background:#1f2937 }
+.filter-bar { background:#fff; padding:10px 20px; border-bottom:1px solid #e5e7eb; display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+.filter-bar input[type="text"], .filter-bar input[type="date"] { padding:5px 8px; font-size:12px; border:1px solid #e5e7eb; border-radius:5px; outline:none }
+.filter-bar input[type="text"]:focus, .filter-bar input[type="date"]:focus { border-color:#111827 }
+.ms-wrap { position:relative }
+.ms-btn { padding:5px 10px; font-size:12px; border:1px solid #e5e7eb; border-radius:5px; background:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:4px; min-width:110px; justify-content:space-between }
+.ms-btn:hover { background:#f9fafb }
+.ms-btn.active { border-color:#111827; background:#f3f4f6; font-weight:600 }
+.ms-drop { position:absolute; top:calc(100% + 2px); left:0; z-index:100; background:#fff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.1); max-height:300px; overflow-y:auto; min-width:200px; padding:4px 0 }
+.ms-item { padding:6px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:8px; white-space:nowrap }
+.ms-item:hover { background:#f3f4f6 }
+.ms-check { width:14px; height:14px; border:1px solid #d1d5db; border-radius:3px; display:inline-flex; align-items:center; justify-content:center; font-size:10px; color:#fff; flex-shrink:0 }
+.ms-check.on { background:#111827; border-color:#111827 }
+.ms-clear { padding:6px 12px; font-size:11px; color:#dc2626; cursor:pointer; border-top:1px solid #f3f4f6 }
+.ms-clear:hover { background:#fef2f2 }
+.chip { padding:3px 8px; border-radius:10px; font-size:10px; font-weight:500; white-space:nowrap; display:inline-block }
+.chip-status { background:#dbeafe; color:#1e40af }
+.chip-assignment { background:#fef3c7; color:#92400e }
+.chip-form { background:#d1fae5; color:#065f46 }
+.chip-email { background:#e0e7ff; color:#3730a3 }
+.chip-whatsapp { background:#dcfce7; color:#166534 }
+.chip-admin { background:#fce7f3; color:#9f1239 }
+.chip-schedule { background:#f3e8ff; color:#6b21a8 }
+.chip-default { background:#f3f4f6; color:#374151 }
+.stats { padding:8px 20px; background:#fffbeb; border-bottom:1px solid #fde68a; font-size:11px; color:#92400e; display:none }
+.stats.show { display:block }
+table { width:100%; border-collapse:collapse; background:#fff }
+thead { position:sticky; top:0; background:#f9fafb; z-index:10 }
+th { text-align:left; padding:10px 12px; font-size:10px; font-weight:600; color:#6b7280; text-transform:uppercase; border-bottom:1px solid #e5e7eb; white-space:nowrap }
+td { padding:10px 12px; border-bottom:1px solid #f3f4f6; vertical-align:top; font-size:12px }
+tr:hover td { background:#f9fafb }
+.mono { font-family:'SF Mono',Monaco,monospace; font-size:11px }
+.uid { font-family:'SF Mono',Monaco,monospace; color:#2563eb; font-weight:500 }
+.timestamp { color:#6b7280; white-space:nowrap }
+.actor { color:#374151 }
+.actor-email { font-size:10px; color:#9ca3af; display:block }
+.details-cell { max-width:500px }
+.details-main { font-size:12px; color:#111827 }
+.details-meta { font-size:10px; color:#6b7280; margin-top:2px }
+.arrow { color:#9ca3af; margin:0 4px }
+.old-val { color:#dc2626; text-decoration:line-through; font-size:11px }
+.new-val { color:#059669; font-weight:500 }
+.json-snippet { font-family:'SF Mono',Monaco,monospace; font-size:10px; color:#6b7280; background:#f9fafb; padding:4px 8px; border-radius:4px; margin-top:3px; max-height:80px; overflow-y:auto; white-space:pre-wrap; word-break:break-word }
+.loading, .empty { padding:40px; text-align:center; color:#6b7280; font-size:13px }
+.no-access { padding:40px; text-align:center; color:#dc2626; font-size:14px }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <img src="/logo.png" class="logo" alt="OH">
+    <div>
+      <h1>Activity Logs</h1>
+      <div class="subtitle" id="subtitle">Loading...</div>
+    </div>
+  </div>
+  <div class="user-bar" id="userBar"></div>
+</div>
+
+<div class="filter-bar" id="filterBar"></div>
+<div class="stats" id="stats"></div>
+<div id="tableWrap"><div class="loading">Loading logs...</div></div>
+
+<script>
+let currentUser = null;
+let allLogs = [];
+let filterOptions = { actions:[], categories:[], actor_emails:[], actor_names:[], dashboards:[] };
+let state = {
+  uid: "",
+  actions: [],
+  categories: [],
+  actor_emails: [],
+  actor_names: [],
+  dashboards: [],
+  from: "",
+  to: "",
+  msOpen: null
+};
+
+function esc(s) { return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+async function init() {
+  try {
+    const authRes = await fetch("/api/auth/me");
+    if (!authRes.ok) { window.location.href = "/login.html"; return; }
+    const { user } = await authRes.json();
+    currentUser = user;
+    if (user.role !== "admin") {
+      document.getElementById("tableWrap").innerHTML = '<div class="no-access">Access denied. This page is only available to admins.</div>';
+      document.getElementById("subtitle").innerText = "Restricted";
+      document.getElementById("filterBar").style.display = "none";
+      renderUserBar();
+      return;
+    }
+    renderUserBar();
+    await loadOptions();
+    renderFilters();
+    await loadLogs();
+  } catch (e) {
+    document.getElementById("tableWrap").innerHTML = '<div class="empty">Failed to load: ' + esc(e.message) + '</div>';
+  }
+}
+
+function renderUserBar() {
+  const bar = document.getElementById("userBar");
+  if (!currentUser) return;
+  let h = '<span>' + esc(currentUser.name || currentUser.email) + '</span>';
+  h += '<button onclick="window.location.href=\'/\'">Dashboard</button>';
+  h += '<button class="primary" onclick="logout()">Logout</button>';
+  bar.innerHTML = h;
+}
+
+async function logout() {
+  await fetch("/api/auth/logout", { method: "POST" });
+  window.location.href = "/login.html";
+}
+
+async function loadOptions() {
+  const res = await fetch("/api/admin/activity-logs?mode=options");
+  if (res.ok) filterOptions = await res.json();
+}
+
+function renderFilters() {
+  const bar = document.getElementById("filterBar");
+  let h = "";
+  h += '<input type="text" placeholder="Search by UID..." value="' + esc(state.uid) + '" oninput="state.uid=this.value;debouncedLoad()" style="width:150px">';
+  h += msDropdown("actions", "Action", filterOptions.actions, state.actions);
+  h += msDropdown("categories", "Category", filterOptions.categories, state.categories);
+  h += msDropdown("actor_emails", "Actor Email", filterOptions.actor_emails, state.actor_emails);
+  h += msDropdown("actor_names", "Actor Name", filterOptions.actor_names, state.actor_names);
+  h += msDropdown("dashboards", "Dashboard", filterOptions.dashboards, state.dashboards);
+  h += '<span style="font-size:10px;color:#9ca3af;font-weight:600;margin-left:6px">DATE:</span>';
+  h += '<input type="date" value="' + esc(state.from) + '" onchange="state.from=this.value;loadLogs()">';
+  h += '<span style="font-size:10px;color:#9ca3af">to</span>';
+  h += '<input type="date" value="' + esc(state.to) + '" onchange="state.to=this.value;loadLogs()">';
+  const hasFilters = state.uid || state.actions.length || state.categories.length || state.actor_emails.length || state.actor_names.length || state.dashboards.length || state.from || state.to;
+  if (hasFilters) {
+    h += '<button onclick="clearAll()" style="padding:5px 10px;font-size:11px;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;border-radius:5px;cursor:pointer;font-weight:500;margin-left:4px">&times; Clear</button>';
+  }
+  h += '<span style="margin-left:auto;font-size:11px;color:#9ca3af" id="resultCount"></span>';
+  bar.innerHTML = h;
+}
+
+function msDropdown(key, label, options, selected) {
+  const isOpen = state.msOpen === key;
+  const count = selected.length;
+  const displayLabel = count > 0 ? label + " (" + count + ")" : label;
+  let h = '<div class="ms-wrap">';
+  h += '<button class="ms-btn' + (count > 0 ? ' active' : '') + '" onclick="toggleMs(\'' + key + '\')">' + esc(displayLabel) + ' <span>&#9662;</span></button>';
+  if (isOpen) {
+    h += '<div class="ms-drop" onclick="event.stopPropagation()">';
+    if (options.length === 0) {
+      h += '<div class="ms-item" style="color:#9ca3af">No options</div>';
+    } else {
+      options.forEach(function(opt) {
+        const on = selected.indexOf(opt) >= 0;
+        h += '<div class="ms-item" onclick="toggleItem(\'' + key + '\',\'' + esc(opt).replace(/'/g, "\\'") + '\')">';
+        h += '<div class="ms-check' + (on ? ' on' : '') + '">' + (on ? '&#10003;' : '') + '</div>' + esc(opt) + '</div>';
+      });
+      if (count > 0) h += '<div class="ms-clear" onclick="clearMs(\'' + key + '\')">Clear</div>';
+    }
+    h += '</div>';
+  }
+  h += '</div>';
+  return h;
+}
+
+function toggleMs(key) {
+  state.msOpen = state.msOpen === key ? null : key;
+  renderFilters();
+}
+
+function toggleItem(key, val) {
+  const idx = state[key].indexOf(val);
+  if (idx >= 0) state[key].splice(idx, 1);
+  else state[key].push(val);
+  renderFilters();
+  loadLogs();
+}
+
+function clearMs(key) {
+  state[key] = [];
+  renderFilters();
+  loadLogs();
+}
+
+function clearAll() {
+  state.uid = "";
+  state.actions = [];
+  state.categories = [];
+  state.actor_emails = [];
+  state.actor_names = [];
+  state.dashboards = [];
+  state.from = "";
+  state.to = "";
+  state.msOpen = null;
+  renderFilters();
+  loadLogs();
+}
+
+document.addEventListener("click", function(e) {
+  if (state.msOpen && !e.target.closest(".ms-wrap")) {
+    state.msOpen = null;
+    renderFilters();
+  }
+});
+
+let searchTimer = null;
+function debouncedLoad() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(loadLogs, 400);
+}
+
+async function loadLogs() {
+  document.getElementById("tableWrap").innerHTML = '<div class="loading">Loading...</div>';
+  const params = new URLSearchParams();
+  if (state.uid) params.append("uid", state.uid);
+  if (state.actions.length) params.append("actions", state.actions.join(","));
+  if (state.categories.length) params.append("categories", state.categories.join(","));
+  if (state.actor_emails.length) params.append("actor_emails", state.actor_emails.join(","));
+  if (state.actor_names.length) params.append("actor_names", state.actor_names.join(","));
+  if (state.dashboards.length) params.append("dashboards", state.dashboards.join(","));
+  if (state.from) params.append("from", state.from);
+  if (state.to) params.append("to", state.to);
+
+  try {
+    const res = await fetch("/api/admin/activity-logs?" + params.toString());
+    const data = await res.json();
+    allLogs = data.logs || [];
+    const statsEl = document.getElementById("stats");
+    if (data.limited) {
+      statsEl.innerText = "Showing first " + data.count + " results. Narrow filters for more specific results.";
+      statsEl.classList.add("show");
+    } else {
+      statsEl.classList.remove("show");
+    }
+    const countEl = document.getElementById("resultCount");
+    if (countEl) countEl.innerText = data.count + " results";
+    renderTable();
+  } catch (e) {
+    document.getElementById("tableWrap").innerHTML = '<div class="empty">Error: ' + esc(e.message) + '</div>';
+  }
+}
+
+function renderTable() {
+  if (allLogs.length === 0) {
+    document.getElementById("tableWrap").innerHTML = '<div class="empty">No logs match the current filters.</div>';
+    return;
+  }
+  let h = '<table><thead><tr>';
+  h += '<th>Timestamp</th><th>UID</th><th>Actor</th><th>Action</th><th>Category</th><th>Dashboard</th><th>Details</th>';
+  h += '</tr></thead><tbody>';
+  allLogs.forEach(function(log) {
+    h += '<tr>';
+    h += '<td class="timestamp mono">' + formatDate(log.created_at) + '</td>';
+    h += '<td class="uid">' + esc(log.uid || "—") + '</td>';
+    h += '<td class="actor">' + esc(log.actor_name || "—") + '<span class="actor-email">' + esc(log.actor_email || "") + '</span></td>';
+    h += '<td>' + esc(log.action || "") + '</td>';
+    h += '<td>' + categoryChip(log.category) + '</td>';
+    h += '<td>' + esc(log.dashboard || "—") + '</td>';
+    h += '<td class="details-cell">' + renderDetails(log.category, log.details) + '</td>';
+    h += '</tr>';
+  });
+  h += '</tbody></table>';
+  document.getElementById("tableWrap").innerHTML = h;
+}
+
+function formatDate(val) {
+  if (!val) return "—";
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return esc(val);
+  return d.toLocaleString("en-IN", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false });
+}
+
+function categoryChip(cat) {
+  if (!cat) return '<span class="chip chip-default">—</span>';
+  const cls = "chip-" + cat.toLowerCase();
+  return '<span class="chip ' + cls + '">' + esc(cat) + '</span>';
+}
+
+function renderDetails(category, details) {
+  if (!details) return '<span style="color:#9ca3af">—</span>';
+  let d;
+  try { d = typeof details === "string" ? JSON.parse(details) : details; }
+  catch { return '<span class="mono">' + esc(String(details).slice(0, 200)) + '</span>'; }
+
+  const cat = (category || "").toLowerCase();
+
+  if (cat === "status" || cat === "assignment") {
+    let h = '<div class="details-main">';
+    h += '<span class="old-val">' + esc(d.old || "—") + '</span>';
+    h += '<span class="arrow">&rarr;</span>';
+    h += '<span class="new-val">' + esc(d.new || "—") + '</span>';
+    h += '</div>';
+    if (d.field) h += '<div class="details-meta">Field: ' + esc(d.field) + (d.source ? ' &middot; Source: ' + esc(d.source) : '') + '</div>';
+    return h;
+  }
+
+  if (cat === "form") {
+    let h = '<div class="details-main"><b>Form ' + esc(d.form_number || "?") + '</b>';
+    if (d.is_draft) h += ' <span style="color:#f59e0b">(Draft)</span>';
+    else h += ' <span style="color:#059669">(Submitted)</span>';
+    h += '</div>';
+    return h;
+  }
+
+  if (cat === "email") {
+    let h = '<div class="details-main"><b>' + esc(d.subject || "(no subject)") + '</b></div>';
+    if (d.to && d.to.length) h += '<div class="details-meta">To: ' + d.to.map(esc).join(", ") + '</div>';
+    if (d.cc && d.cc.length) h += '<div class="details-meta">CC: ' + d.cc.map(esc).join(", ") + '</div>';
+    if (d.gmail_id) h += '<div class="details-meta mono" style="color:#9ca3af">Gmail ID: ' + esc(d.gmail_id) + '</div>';
+    return h;
+  }
+
+  if (cat === "whatsapp") {
+    let h = '<div class="details-main"><b>Template:</b> <span class="mono">' + esc(d.template || "—") + '</span></div>';
+    if (d.recipients && d.recipients.length) {
+      const ok = d.recipients.filter(r => r.ok).length;
+      const fail = d.recipients.length - ok;
+      h += '<div class="details-meta">' + d.recipients.length + ' recipient' + (d.recipients.length !== 1 ? 's' : '');
+      if (fail > 0) h += ' <span style="color:#dc2626">(' + fail + ' failed)</span>';
+      if (ok > 0) h += ' <span style="color:#059669">(' + ok + ' sent)</span>';
+      h += '</div>';
+      h += '<div class="json-snippet">';
+      d.recipients.forEach(function(r) {
+        h += (r.ok ? "&#10003; " : "&times; ") + esc(r.name || "") + " (" + esc(r.phone || "") + ")\n";
+      });
+      h += '</div>';
+    }
+    return h;
+  }
+
+  if (cat === "admin") {
+    let h = '<div class="details-main"><b>Changes</b></div>';
+    if (d.changes && typeof d.changes === "object") {
+      h += '<div class="json-snippet">';
+      Object.keys(d.changes).forEach(function(field) {
+        const c = d.changes[field];
+        h += esc(field) + ': ';
+        h += '<span class="old-val">' + esc(c.old == null ? "null" : String(c.old)) + '</span>';
+        h += ' &rarr; ';
+        h += '<span class="new-val">' + esc(c.new == null ? "null" : String(c.new)) + '</span>\n';
+      });
+      h += '</div>';
+    }
+    return h;
+  }
+
+  if (cat === "schedule") {
+    let h = '<div class="details-main">';
+    h += '<span class="old-val">' + esc(d.old_exec || "—") + '</span>';
+    h += '<span class="arrow">&rarr;</span>';
+    h += '<span class="new-val">' + esc(d.new_exec || "—") + '</span>';
+    h += '</div>';
+    h += '<div class="details-meta">Executive reassignment</div>';
+    return h;
+  }
+
+  // Fallback: pretty JSON
+  return '<div class="json-snippet">' + esc(JSON.stringify(d, null, 2)) + '</div>';
+}
+
+init();
+</script>
+</body>
+</html>

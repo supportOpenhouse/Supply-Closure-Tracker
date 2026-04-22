@@ -31,6 +31,7 @@ function _render() {
     h += '<div class="user-bar">';
     h += '<span class="email">'+esc(currentUser.name || currentUser.email)+'</span>';
     if (currentUser.role === 'admin') {
+      h += '<button onclick="window.open(\'/logs.html\',\'_blank\')" style="padding:4px 10px;font-size:11px;border:1px solid #e5e7eb;background:#fff;border-radius:5px;cursor:pointer">Logs</button>';
       h += '<button class="admin-btn" onclick="openAdmin()">Manage Users';
       if (pendingCount > 0) h += '<span class="pending-badge">'+pendingCount+'</span>';
       h += '</button>';
