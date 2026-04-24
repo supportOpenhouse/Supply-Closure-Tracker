@@ -210,7 +210,7 @@ module.exports = async function handler(req, res) {
     });
 
     // Step 6: Apply visibility filtering from team_directory
-    if (user.role === "admin" || user.role === "demand") {
+    if (user.role === "admin" || user.role === "demand" || user.role === "price_view") {
       return res.status(200).json(allProperties);
     }
 
