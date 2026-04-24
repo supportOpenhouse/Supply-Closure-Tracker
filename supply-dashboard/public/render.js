@@ -291,18 +291,19 @@ function _render() {
       if (p.videoLink) h += '<a href="'+esc(p.videoLink)+'" target="_blank" style="color:#2563eb;text-decoration:none">\u25B6 Video/Photos</a>';
       h += '</div>';
 
-      // POC edit (admin only)
-      if (currentUser && currentUser.role === 'admin') {
+      // POC edit (admin = editable, price_view = read-only visible)
+      if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'price_view')) {
+        var isAdmin = currentUser.role === 'admin';
         var pocFromData = DATA.map(function(d){return d.assignedBy}).filter(Boolean);
-        var pocFromTeam = adminTeam.map(function(t){return t.display_name}).filter(Boolean);
+        var pocFromTeam = (adminTeam || []).map(function(t){return t.display_name}).filter(Boolean);
         var pocNames = [...new Set([...pocFromData, ...pocFromTeam])].sort();
         h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px" onclick="event.stopPropagation()">';
-        h += '<span style="font-size:12px;font-weight:600;color:#0369a1">Change POC:</span>';
-        h += '<select onchange="changePoc(\''+p.uid+'\',this.value)" style="padding:4px 8px;font-size:12px;border:1px solid #93c5fd;border-radius:4px;outline:none">';
+        h += '<span style="font-size:12px;font-weight:600;color:#0369a1">'+(isAdmin?'Change POC:':'POC:')+'</span>';
+        h += '<select '+(isAdmin?'onchange="changePoc(\''+p.uid+'\',this.value)"':'disabled')+' style="padding:4px 8px;font-size:12px;border:1px solid #93c5fd;border-radius:4px;outline:none;'+(isAdmin?'':'background:#f3f4f6;cursor:not-allowed;color:#6b7280')+'">';
         h += '<option value="">'+esc(p.assignedBy || "— Select —")+'</option>';
-        pocNames.forEach(function(n){ if(n!==p.assignedBy) h += '<option value="'+esc(n)+'">'+esc(n)+'</option>'; });
+        if (isAdmin) pocNames.forEach(function(n){ if(n!==p.assignedBy) h += '<option value="'+esc(n)+'">'+esc(n)+'</option>'; });
         h += '</select>';
-        h += '<span id="dot_'+p.uid+'_assigned_by" class="save-dot '+(saveStatus[p.uid+'_assigned_by']||'')+'"></span>';
+        if (isAdmin) h += '<span id="dot_'+p.uid+'_assigned_by" class="save-dot '+(saveStatus[p.uid+'_assigned_by']||'')+'"></span>';
         h += '</div>';
       }
 

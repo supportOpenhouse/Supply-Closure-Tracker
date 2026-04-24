@@ -1,5 +1,5 @@
 const { getDB } = require("../_db");
-const { requireAdmin } = require("../_auth");
+const { requireAuth, requireAdmin } = require("../_auth");
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -7,8 +7,19 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const admin = await requireAdmin(req, res);
-  if (!admin) return;
+  // GET is available to admin + price_view (they need team list for POC display)
+  // Mutations (POST/DELETE/PATCH) are admin-only
+  let user;
+  if (req.method === "GET") {
+    user = await requireAuth(req, res);
+    if (!user) return;
+    if (user.role !== "admin" && user.role !== "price_view") {
+      return res.status(403).json({ error: "Access denied" });
+    }
+  } else {
+    user = await requireAdmin(req, res);
+    if (!user) return;
+  }
 
   const sql = getDB();
 

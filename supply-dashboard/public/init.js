@@ -25,6 +25,9 @@ async function init() {
       loadBugs();
       loadUsers();
       loadTeam();
+    } else if (currentUser.role === "price_view") {
+      // Price View needs team for POC dropdown display
+      loadTeam();
     }
 
     await fetchProperties();
