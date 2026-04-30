@@ -43,6 +43,7 @@ body { background:#f9fafb; color:#111827; font-size:13px }
 .chip-yes_no_button { background:#fef9c3; color:#854d0e }
 .chip-field_edit { background:#cffafe; color:#155e75 }
 .chip-text { background:#cffafe; color:#155e75 }
+.chip-flag { background:#fee2e2; color:#991b1b }
 .chip-default { background:#f3f4f6; color:#374151 }
 .stats { padding:8px 20px; background:#fffbeb; border-bottom:1px solid #fde68a; font-size:11px; color:#92400e; display:none }
 .stats.show { display:block }
@@ -398,6 +399,16 @@ function renderDetails(category, details) {
     let h = '<div class="details-main">';
     h += '<b>' + esc(d.field || "—") + ':</b> ';
     h += '<span style="color:#374151">' + esc(d.value || "—") + '</span>';
+    h += '</div>';
+    return h;
+  }
+
+  if (cat === "flag") {
+    const flagged = d.flagged === true;
+    let h = '<div class="details-main">';
+    h += flagged
+      ? '<span style="color:#dc2626;font-weight:600">&#9873; Flagged</span>'
+      : '<span style="color:#6b7280;font-weight:500">&#9872; Unflagged</span>';
     h += '</div>';
     return h;
   }
