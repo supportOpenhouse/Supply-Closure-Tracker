@@ -403,6 +403,18 @@ function renderDetails(category, details) {
     return h;
   }
 
+  if (cat === "price") {
+    let h = '<div class="details-main">';
+    h += '<b>' + esc(d.field || "—") + ':</b> ';
+    const num = Number(d.value);
+    const formatted = isFinite(num)
+      ? '&#8377;' + num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : esc(d.value == null ? "—" : String(d.value));
+    h += '<span style="color:#059669;font-weight:600">' + formatted + '</span>';
+    h += '</div>';
+    return h;
+  }
+
   if (cat === "flag") {
     const flagged = d.flagged === true;
     let h = '<div class="details-main">';
