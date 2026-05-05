@@ -45,6 +45,7 @@ body { background:#f9fafb; color:#111827; font-size:13px }
 .chip-text { background:#cffafe; color:#155e75 }
 .chip-flag { background:#fee2e2; color:#991b1b }
 .chip-price { background:#dcfce7; color:#065f46 }
+.chip-pre-email-change { background:#ffedd5; color:#9a3412 }
 .chip-default { background:#f3f4f6; color:#374151 }
 .stats { padding:8px 20px; background:#fffbeb; border-bottom:1px solid #fde68a; font-size:11px; color:#92400e; display:none }
 .stats.show { display:block }
@@ -345,7 +346,7 @@ function formatDate(val) {
 
 function categoryChip(cat) {
   if (!cat) return '<span class="chip chip-default">—</span>';
-  const cls = "chip-" + cat.toLowerCase();
+  const cls = "chip-" + cat.toLowerCase().replace(/\s+/g, "-");
   return '<span class="chip ' + cls + '">' + esc(cat) + '</span>';
 }
 
@@ -436,8 +437,9 @@ function renderDetails(category, details) {
     return h;
   }
 
-  if (cat === "admin") {
-    let h = '<div class="details-main"><b>Changes</b></div>';
+  if (cat === "admin" || cat === "pre-email change") {
+    const heading = cat === "pre-email change" ? "Pre-email changes" : "Changes";
+    let h = '<div class="details-main"><b>' + heading + '</b></div>';
     if (d.changes && typeof d.changes === "object") {
       h += '<div class="json-snippet">';
       Object.keys(d.changes).forEach(function(field) {
