@@ -111,7 +111,21 @@ function _render() {
   }
   h += '</div>';
   h += '<select onchange="updateFilter(\'sourceFilter\',this.value)"><option value="All">All Sources</option><option value="CP"'+(state.sourceFilter==="CP"?' selected':'')+'>CP</option><option value="Direct"'+(state.sourceFilter==="Direct"?' selected':'')+'>Direct</option></select>';
-  var hasFilters = state.search || state.cityFilter !== "All" || state.statusFilter.length > 0 || state.pocFilter.length > 0 || state.sourceFilter !== "All" || state.sortCol || state.dateFilter !== "all";
+  // Followup Date multi-select
+  var fdLabel = state.followupDateFilter.length === 0 ? "All Followup" : "Followup ("+state.followupDateFilter.length+")";
+  h += '<div class="ms-wrap"><button class="ms-btn'+(state.followupDateFilter.length>0?' active':'')+'" onclick="toggleMs(\'followup\')">'+esc(fdLabel)+' \u25BE</button>';
+  if (state.msOpen === 'followup') {
+    h += '<div class="ms-drop" onclick="event.stopPropagation()">';
+    var fOpts = [{k:"past_due",l:"Past Due"},{k:"today",l:"Today"},{k:"tomorrow",l:"Tomorrow"},{k:"week",l:"Within 7 Days"},{k:"future",l:"Future (>7 Days)"},{k:"none",l:"(No Followup Date)"}];
+    fOpts.forEach(function(o){
+      var on = state.followupDateFilter.indexOf(o.k) >= 0;
+      h += '<div class="ms-item" onclick="toggleMsItem(\'followupDateFilter\',\''+o.k+'\')"><div class="ms-check'+(on?' on':'')+'">'+(on?'&#10003;':'')+'</div>'+o.l+'</div>';
+    });
+    if (state.followupDateFilter.length > 0) h += '<div class="ms-clear" onclick="clearMs(\'followupDateFilter\')">Clear</div>';
+    h += '</div>';
+  }
+  h += '</div>';
+  var hasFilters = state.search || state.cityFilter !== "All" || state.statusFilter.length > 0 || state.pocFilter.length > 0 || state.sourceFilter !== "All" || state.sortCol || state.dateFilter !== "all" || state.followupDateFilter.length > 0;
   if (hasFilters) {
     h += '<button onclick="clearAllFilters()" style="padding:3px 8px;border-radius:5px;font-size:10px;cursor:pointer;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;transition:all 0.15s;font-weight:500">&times; Clear</button>';
   }
@@ -132,11 +146,14 @@ function _render() {
   // Table
   h += '<div id="tableWrap" style="flex:1;overflow:auto"><table><thead><tr>';
   var isDemand = currentUser && currentUser.role === 'demand';
+  var isAdmin = currentUser && currentUser.role === 'admin';
   var DEMAND_HIDE = ["Ask (in Lakhs)","Name","Phone","Followup Date","Offer Price","Brokerage","Internal Remarks","Closure Team Comments","Rahool Comments","Prashant Comments"];
   var COLS = [
     {hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"ID / Lead ID",key:"uid"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Followup Date",key:null},{hdr:"Offer Price",key:null},{hdr:"Brokerage",key:"supplyDashBrokerage"},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"Internal Remarks",key:null},{hdr:"Closure Team Comments",key:null},{hdr:"Rahool Comments",key:null},{hdr:"Prashant Comments",key:null},{hdr:"Demand Team Comments",key:null}
   ];
   if (isDemand) COLS = COLS.filter(function(c){ return DEMAND_HIDE.indexOf(c.hdr) === -1; });
+  // Admin-only Priority column (first)
+  if (isAdmin) COLS.unshift({hdr:"\u2605", key:"isHighPriority"});
   var colCount = COLS.length;
   COLS.forEach(function(col,i) {
     var sortable = col.key ? ' class="sortable" onclick="toggleSort(\''+col.key+'\')"' : '';
@@ -160,7 +177,8 @@ function _render() {
     const sc = STATUS_COLORS[status] || STATUS_COLORS["New"];
     const isExp = state.expandedId === p.uid;
 
-    h += '<tr class="datarow'+(isExp?' expanded':'')+'" onclick="toggleExpand(\''+p.uid+'\')">';
+    h += '<tr class="datarow'+(isExp?' expanded':'')+(p.isHighPriority?' priority-row':'')+'" onclick="toggleExpand(\''+p.uid+'\')">';
+    if (isAdmin) h += '<td onclick="event.stopPropagation()" style="text-align:center;width:36px"><input type="checkbox" '+(p.isHighPriority?'checked ':'')+'onclick="togglePriority(\''+p.uid+'\',event)" style="cursor:pointer;width:14px;height:14px;accent-color:#10b981"></td>';
     h += '<td style="font-size:11px;white-space:nowrap;color:#6b7280">'+formatDateOnly(p.scheduleSubmittedAt)+'</td>';
     h += '<td style="font-size:11px;white-space:nowrap;font-family:monospace">'+esc(p.uid||"")+(p.leadId?' <span style="color:#9ca3af">('+esc(p.leadId)+')</span>':'')+'</td>';
     h += '<td class="society-cell">'+esc(p.society)+'</td>';
@@ -304,6 +322,10 @@ function _render() {
         if (isAdmin) pocNames.forEach(function(n){ if(n!==p.assignedBy) h += '<option value="'+esc(n)+'">'+esc(n)+'</option>'; });
         h += '</select>';
         if (isAdmin) h += '<span id="dot_'+p.uid+'_assigned_by" class="save-dot '+(saveStatus[p.uid+'_assigned_by']||'')+'"></span>';
+        // Edit Property button (admin only) — opens form admin to edit any field
+        if (isAdmin) {
+          h += '<a href="https://backend-form-automation-oh-olie.onrender.com/admin?uid='+encodeURIComponent(p.uid)+'" target="_blank" rel="noopener" style="margin-left:auto;padding:5px 12px;font-size:12px;font-weight:600;background:#0369a1;color:#fff;border-radius:4px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">&#9998; Edit Property</a>';
+        }
         h += '</div>';
       }
 

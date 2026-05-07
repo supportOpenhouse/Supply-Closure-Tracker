@@ -45,6 +45,7 @@ let state = {
   dateFilter: "all", // all | yesterday | week | month | custom
   dateFrom: "",
   dateTo: "",
+  followupDateFilter: [], // multi-select: today, tomorrow, week, past_due, future, none
   expandedId: null,
   modalImg: null,
   page: 1,

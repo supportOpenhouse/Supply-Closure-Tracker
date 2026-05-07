@@ -12,13 +12,14 @@ const COMMENT_FIELDS = [
   "demand_team_comments"
 ];
 
-const ADMIN_FIELDS = ["assigned_by"];
+const ADMIN_FIELDS = ["assigned_by", "is_high_priority"];
 const ALL_ALLOWED = [...COMMENT_FIELDS, ...ADMIN_FIELDS];
 
 // Fields that get activity-logged
 const LOGGED_FIELDS = {
   "assigned_by": { action: "poc_changed", category: "assignment", field: "poc" },
   "status_override": { action: "status_changed", category: "status", field: "status" },
+  "is_high_priority": { action: "priority_changed", category: "flag", field: "is_high_priority" },
 };
 
 // IST timestamp
@@ -173,6 +174,10 @@ module.exports = async function handler(req, res) {
       const refunded = (value === "Cancelled Post Token");
       query = `UPDATE properties SET status_override = $1, is_token_refunded = $2 WHERE uid = $3 RETURNING uid`;
       params = [value || "", refunded, uid];
+    } else if (field === "is_high_priority") {
+      const flag = value === true || value === "true";
+      query = `UPDATE properties SET is_high_priority = $1 WHERE uid = $2 RETURNING uid`;
+      params = [flag, uid];
     } else {
       query = `UPDATE properties SET ${field} = $1 WHERE uid = $2 RETURNING uid`;
       params = [value || "", uid];
@@ -184,13 +189,25 @@ module.exports = async function handler(req, res) {
     }
 
     // Log after successful update (fire-and-forget)
-    if (LOGGED_FIELDS[field] && oldValue !== (value || "")) {
+    if (LOGGED_FIELDS[field]) {
       const meta = LOGGED_FIELDS[field];
-      logActivity(sql, {
-        uid, action: meta.action, category: meta.category,
-        actor_email: user.email, actor_name: user.name || user.email,
-        details: { field: meta.field, old: oldValue, new: value || "", source: "supply_dashboard", timestamp_ist: getIST() }
-      });
+      let details, shouldLog;
+      if (field === "is_high_priority") {
+        const flag = value === true || value === "true";
+        const oldFlag = oldValue === true || oldValue === "true";
+        shouldLog = flag !== oldFlag;
+        details = { flagged: flag, source: "supply_dashboard", timestamp_ist: getIST() };
+      } else {
+        shouldLog = oldValue !== (value || "");
+        details = { field: meta.field, old: oldValue, new: value || "", source: "supply_dashboard", timestamp_ist: getIST() };
+      }
+      if (shouldLog) {
+        logActivity(sql, {
+          uid, action: meta.action, category: meta.category,
+          actor_email: user.email, actor_name: user.name || user.email,
+          details: details
+        });
+      }
     }
 
     return res.status(200).json({ success: true, uid, field, value });

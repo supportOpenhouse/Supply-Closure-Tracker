@@ -35,11 +35,39 @@ function clearAllFilters() {
   state.dateFilter = "all";
   state.dateFrom = "";
   state.dateTo = "";
+  state.followupDateFilter = [];
   state.sortCol = null;
   state.sortDir = "asc";
   state.page = 1;
   state.msOpen = null;
   render();
+}
+
+async function togglePriority(uid, event) {
+  if (event) event.stopPropagation();
+  const prop = DATA.find(p => p.uid === uid);
+  if (!prop) return;
+  const newVal = !prop.isHighPriority;
+  prop.isHighPriority = newVal; // optimistic
+  render();
+
+  try {
+    const res = await fetch("/api/update", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid, field: "is_high_priority", value: newVal })
+    });
+    if (!res.ok) {
+      prop.isHighPriority = !newVal; // rollback
+      const err = await res.json().catch(() => ({}));
+      alert("Failed: " + (err.error || res.status));
+      render();
+    }
+  } catch (e) {
+    prop.isHighPriority = !newVal;
+    alert("Error: " + e.message);
+    render();
+  }
 }
 
 function setDateFilter(mode) {

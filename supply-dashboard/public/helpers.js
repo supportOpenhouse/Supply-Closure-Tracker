@@ -148,6 +148,12 @@ function timeAgo(ts) {
   return weeks + (weeks === 1 ? " week" : " weeks") + " ago";
 }
 
+function getLatestFollowupDate(p) {
+  const arr = Array.isArray(p.followupDates) ? p.followupDates : [];
+  if (arr.length === 0) return "";
+  return arr[arr.length - 1].date || "";
+}
+
 function getFiltered() {
   var result = DATA.filter(p => {
     // Date filter on scheduleSubmittedAt
@@ -186,6 +192,28 @@ function getFiltered() {
       const src = (p.source || "").toLowerCase();
       if (state.sourceFilter === "CP" && src !== "cp") return false;
       if (state.sourceFilter === "Direct" && src === "cp") return false;
+    }
+    // Followup Date filter (multi-select on latest followup date)
+    if (state.followupDateFilter.length > 0) {
+      const latest = getLatestFollowupDate(p);
+      const buckets = [];
+      if (!latest) buckets.push("none");
+      else {
+        const d = new Date(latest);
+        if (!isNaN(d.getTime())) {
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+          const dayAfter = new Date(today); dayAfter.setDate(dayAfter.getDate() + 2);
+          const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
+          if (d < today) buckets.push("past_due");
+          else if (d >= today && d < tomorrow) buckets.push("today");
+          else if (d >= tomorrow && d < dayAfter) buckets.push("tomorrow");
+          else if (d >= today && d <= weekEnd) buckets.push("week");
+          else buckets.push("future");
+        }
+      }
+      if (!state.followupDateFilter.some(f => buckets.indexOf(f) >= 0)) return false;
     }
     if (state.search) {
       const s = state.search.toLowerCase();

@@ -75,7 +75,7 @@ module.exports = async function handler(req, res) {
         prashant_comments, demand_team_comments,
         closure_team_comments_at, rahool_comments_at,
         prashant_comments_at, demand_team_comments_at,
-        key_handover_date, token_remarks, is_token_refunded, followup_dates
+        key_handover_date, token_remarks, is_token_refunded, followup_dates, is_high_priority
       FROM properties
       WHERE (is_dead IS NULL OR is_dead = false)
       ORDER BY created_at DESC
@@ -132,6 +132,7 @@ module.exports = async function handler(req, res) {
         "exit_compass_image": "exitCompassImage",
         "balcony_details": "balconyDetails",
         "followup_dates": "followupDates",
+        "is_high_priority": "isHighPriority",
       };
       const COMMENT_TS_MAP = {
         "closure_team_comments": "closureTeamCommentsAt",
@@ -148,6 +149,8 @@ module.exports = async function handler(req, res) {
             // Try parsing JSON for array fields
             if (jsKey === "balconyDetails" || jsKey === "followupDates") {
               try { p[jsKey] = JSON.parse(obj.value); } catch { p[jsKey] = []; }
+            } else if (jsKey === "isHighPriority") {
+              p[jsKey] = obj.value === "true" || obj.value === true;
             } else {
               p[jsKey] = obj.value;
             }
@@ -327,6 +330,7 @@ function transformRow(r) {
     keysHandoverDate: r.key_handover_date || "",
     tokenRemarks: r.token_remarks || "",
     isTokenRefunded: r.is_token_refunded || false,
+    isHighPriority: r.is_high_priority || false,
     followupDates: parseJson(r.followup_dates),
   };
 }
