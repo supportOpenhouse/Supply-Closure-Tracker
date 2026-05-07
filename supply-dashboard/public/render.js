@@ -112,8 +112,11 @@ function _render() {
   h += '</div>';
   h += '<select onchange="updateFilter(\'sourceFilter\',this.value)"><option value="All">All Sources</option><option value="CP"'+(state.sourceFilter==="CP"?' selected':'')+'>CP</option><option value="Direct"'+(state.sourceFilter==="Direct"?' selected':'')+'>Direct</option></select>';
   // Followup Date multi-select
-  var fdLabel = state.followupDateFilter.length === 0 ? "All Followup" : "Followup ("+state.followupDateFilter.length+")";
-  h += '<div class="ms-wrap"><button class="ms-btn'+(state.followupDateFilter.length>0?' active':'')+'" onclick="toggleMs(\'followup\')">'+esc(fdLabel)+' \u25BE</button>';
+  h += '<div class="ms-wrap">';
+  h += '<div class="ms-btn" onclick="event.stopPropagation();toggleMs(\'followup\')">';
+  h += state.followupDateFilter.length === 0 ? 'All Followup' : 'Followup';
+  if (state.followupDateFilter.length > 0) h += ' <span class="ms-count">'+state.followupDateFilter.length+'</span>';
+  h += ' &#9662;</div>';
   if (state.msOpen === 'followup') {
     h += '<div class="ms-drop" onclick="event.stopPropagation()">';
     var fOpts = [{k:"past_due",l:"Past Due"},{k:"today",l:"Today"},{k:"tomorrow",l:"Tomorrow"},{k:"week",l:"Within 7 Days"},{k:"future",l:"Future (>7 Days)"},{k:"none",l:"(No Followup Date)"}];
@@ -121,7 +124,7 @@ function _render() {
       var on = state.followupDateFilter.indexOf(o.k) >= 0;
       h += '<div class="ms-item" onclick="toggleMsItem(\'followupDateFilter\',\''+o.k+'\')"><div class="ms-check'+(on?' on':'')+'">'+(on?'&#10003;':'')+'</div>'+o.l+'</div>';
     });
-    if (state.followupDateFilter.length > 0) h += '<div class="ms-clear" onclick="clearMs(\'followupDateFilter\')">Clear</div>';
+    if (state.followupDateFilter.length > 0) h += '<div class="ms-clear" onclick="clearMs(\'followupDateFilter\')">Clear all</div>';
     h += '</div>';
   }
   h += '</div>';
@@ -311,7 +314,6 @@ function _render() {
 
       // POC edit (admin = editable, price_view = read-only visible)
       if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'price_view')) {
-        var isAdmin = currentUser.role === 'admin';
         var pocFromData = DATA.map(function(d){return d.assignedBy}).filter(Boolean);
         var pocFromTeam = (adminTeam || []).map(function(t){return t.display_name}).filter(Boolean);
         var pocNames = [...new Set([...pocFromData, ...pocFromTeam])].sort();
@@ -324,7 +326,7 @@ function _render() {
         if (isAdmin) h += '<span id="dot_'+p.uid+'_assigned_by" class="save-dot '+(saveStatus[p.uid+'_assigned_by']||'')+'"></span>';
         // Edit Property button (admin only) — opens form admin to edit any field
         if (isAdmin) {
-          h += '<a href="https://backend-form-automation-oh-olie.onrender.com/admin?uid='+encodeURIComponent(p.uid)+'" target="_blank" rel="noopener" style="margin-left:auto;padding:5px 12px;font-size:12px;font-weight:600;background:#0369a1;color:#fff;border-radius:4px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">&#9998; Edit Property</a>';
+          h += '<a href="https://backend-form-automation-oh-olie.onrender.com/admin?uid='+encodeURIComponent(p.uid)+'" target="_blank" rel="noopener" style="padding:5px 12px;font-size:12px;font-weight:600;background:#0369a1;color:#fff;border-radius:4px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">&#9998; Edit Property</a>';
         }
         h += '</div>';
       }
