@@ -6,12 +6,12 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/whatsapp-followups?type=morning",
-      "schedule": "30 4 * * *"
+      "path": "/api/cron/whatsapp-followups?type=morning&poc=Test%20Sahaj",
+      "schedule": "20 9 * * *"
     },
     {
-      "path": "/api/cron/whatsapp-followups?type=evening",
-      "schedule": "30 12 * * *"
+      "path": "/api/cron/whatsapp-followups?type=evening&poc=Test%20Sahaj",
+      "schedule": "25 9 * * *"
     }
   ]
 }

@@ -162,6 +162,14 @@ module.exports = async function handler(req, res) {
       byPoc[poc].uids.push(p.uid);
     });
 
+    // Optional: restrict to a single POC (for testing) via ?poc=Name
+    const pocFilter = (req.query.poc || "").trim();
+    if (pocFilter) {
+      Object.keys(byPoc).forEach(name => {
+        if (name.toLowerCase() !== pocFilter.toLowerCase()) delete byPoc[name];
+      });
+    }
+
     if (Object.keys(byPoc).length === 0) {
       return res.status(200).json({ ok: true, message: "No follow-ups today", sent: 0, type });
     }
