@@ -18,6 +18,10 @@ td { padding:6px 10px; font-size:12px; color:#374151; border-bottom:1px solid #f
 tr.datarow { cursor:pointer; background:#fff; }
 tr.datarow:hover { background:#f8fafc; }
 tr.datarow.expanded { background:#f0f4ff; }
+tr.datarow.followup-pending td { background:#fef9c3 !important; }
+tr.datarow.followup-pending:hover td { background:#fef08a !important; }
+tr.datarow.followup-pending.expanded td { background:#fef08a !important; }
+/* High priority (green) wins over followup yellow */
 tr.datarow.priority-row td { background:#dcfce7 !important; }
 tr.datarow.priority-row:hover td { background:#bbf7d0 !important; }
 tr.datarow.priority-row.expanded td { background:#bbf7d0 !important; }

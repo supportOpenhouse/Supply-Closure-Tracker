@@ -154,6 +154,27 @@ function getLatestFollowupDate(p) {
   return arr[arr.length - 1].date || "";
 }
 
+// Match the WhatsApp cron logic: row is a pending follow-up if
+// (a) latest followup date is today or earlier (IST) AND
+// (b) closure_team_comments_at is NOT today (IST)
+function isFollowupPending(p) {
+  const latest = getLatestFollowupDate(p);
+  if (!latest) return false;
+  // Compare YYYY-MM-DD in IST
+  function istDateStr(val) {
+    if (!val) return "";
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return "";
+    return new Date(d.getTime() + (5.5 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+  }
+  const todayIST = istDateStr(new Date().toISOString());
+  const latestIST = istDateStr(latest);
+  if (!latestIST || latestIST > todayIST) return false; // future
+  const closureIST = istDateStr(p.closureTeamCommentsAt);
+  if (closureIST === todayIST) return false; // commented today
+  return true;
+}
+
 function getFiltered() {
   var result = DATA.filter(p => {
     // Date filter on scheduleSubmittedAt

@@ -3,5 +3,15 @@
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/login.html", "destination": "/public/login.html" },
     { "source": "/(.*)", "destination": "/public/$1" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/whatsapp-followups?type=morning",
+      "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/whatsapp-followups?type=evening",
+      "schedule": "30 12 * * *"
+    }
   ]
 }
