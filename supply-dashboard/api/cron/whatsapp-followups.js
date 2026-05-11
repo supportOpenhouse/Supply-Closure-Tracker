@@ -186,6 +186,11 @@ module.exports = async function handler(req, res) {
       return true;
     });
 
+    // Guard 1: zero total follow-ups → skip everything (no DB queries, no messages)
+    if (followups.length === 0) {
+      return res.status(200).json({ ok: true, message: "No follow-ups today", sent: 0, type, total_followup_rows: 0 });
+    }
+
     // ── 3. Group by POC name ──
     const byPoc = {};
     followups.forEach(p => {
@@ -204,8 +209,9 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // Guard 2: zero POCs after grouping/filtering → no messages
     if (Object.keys(byPoc).length === 0) {
-      return res.status(200).json({ ok: true, message: "No follow-ups today", sent: 0, type });
+      return res.status(200).json({ ok: true, message: "No follow-ups for any POC", sent: 0, type });
     }
 
     // ── 4. Look up phone numbers from `users` table (by name, fallback email) ──
@@ -227,6 +233,11 @@ module.exports = async function handler(req, res) {
     // ── 5. Send WhatsApp per POC ──
     const results = [];
     for (const [pocName, info] of Object.entries(byPoc)) {
+      // Guard 3: defensive — never send when count is 0 (shouldn't happen, but bulletproof)
+      if (!info.count || info.count < 1) {
+        results.push({ poc: pocName, count: info.count || 0, status: "skipped_zero_count" });
+        continue;
+      }
       const pocKey = pocName.toLowerCase();
       const firstWord = pocKey.split(" ")[0];
       let rawPhone = phoneByName[pocKey] || phoneByName[firstWord] || phoneByEmail[pocKey];
