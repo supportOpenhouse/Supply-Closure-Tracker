@@ -7,11 +7,11 @@
   "crons": [
     {
       "path": "/api/cron/whatsapp-followups?type=morning&poc=Test%20Sahaj",
-      "schedule": "20 9 * * *"
+      "schedule": "30 9 * * *"
     },
     {
       "path": "/api/cron/whatsapp-followups?type=evening&poc=Test%20Sahaj",
-      "schedule": "25 9 * * *"
+      "schedule": "35 9 * * *"
     }
   ]
 }
