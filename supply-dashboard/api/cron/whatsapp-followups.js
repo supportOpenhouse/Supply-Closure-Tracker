@@ -58,9 +58,15 @@ async function sendInteraktMessage({ phone, templateName, bodyValues }) {
   const apiKey = process.env.INTERAKT_API_KEY;
   if (!apiKey) throw new Error("INTERAKT_API_KEY not set");
 
+  // Interakt expects 10-digit phone (no country code) with countryCode separately
+  let phoneNumber = phone;
+  if (phoneNumber.startsWith("91") && phoneNumber.length === 12) {
+    phoneNumber = phoneNumber.slice(2);
+  }
+
   const payload = {
     countryCode: "+91",
-    phoneNumber: phone.startsWith("91") ? phone.slice(2) : phone,
+    phoneNumber: phoneNumber,
     callbackData: "supply_tracker_followup",
     type: "Template",
     template: {
@@ -70,19 +76,28 @@ async function sendInteraktMessage({ phone, templateName, bodyValues }) {
     },
   };
 
-  const res = await fetch("https://api.interakt.ai/v1/public/message/", {
-    method: "POST",
-    headers: {
-      "Authorization": "Basic " + apiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  // Interakt accepts either raw API key or "Basic <base64-key>".
+  // If the env var starts with 'Basic ', use as-is. Otherwise prepend 'Basic '.
+  const authValue = apiKey.startsWith("Basic ") ? apiKey : "Basic " + apiKey;
 
-  const text = await res.text();
+  let res, text;
+  try {
+    res = await fetch("https://api.interakt.ai/v1/public/message/", {
+      method: "POST",
+      headers: {
+        "Authorization": authValue,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    text = await res.text();
+  } catch (fetchErr) {
+    return { ok: false, status: 0, body: { error: "fetch_failed", message: fetchErr.message } };
+  }
+
   let parsed;
   try { parsed = JSON.parse(text); } catch { parsed = { raw: text }; }
-  return { ok: res.ok, status: res.status, body: parsed };
+  return { ok: res.ok, status: res.status, body: parsed, sent_payload: payload };
 }
 
 module.exports = async function handler(req, res) {
@@ -108,6 +123,25 @@ module.exports = async function handler(req, res) {
   }
   const templateName = TEMPLATES[type];
   const dryRun = req.query.dry === "1" || req.query.dry === "true";
+
+  // Diagnostic mode — bypasses follow-up detection and sends a test message
+  // to the phone in ?phone= (or default test number). Use only for testing.
+  // e.g. /api/cron/whatsapp-followups?type=morning&diag=1&phone=9999999999&secret=...
+  if (req.query.diag === "1" || req.query.diag === "true") {
+    const phoneRaw = req.query.phone || "";
+    const phone = normalizePhone(phoneRaw);
+    if (!phone) return res.status(400).json({ error: "Diagnostic mode needs ?phone=10digits" });
+    try {
+      const send = await sendInteraktMessage({
+        phone,
+        templateName,
+        bodyValues: [req.query.name || "TestUser", req.query.count || "1"],
+      });
+      return res.status(200).json({ diagnostic: true, phone, send });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
 
   const sql = getDB();
 
