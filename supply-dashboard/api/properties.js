@@ -1,5 +1,5 @@
 const { getDB } = require("./_db");
-const { requireAuth } = require("./_auth");
+const { requireAuth, nameFromEmail } = require("./_auth");
 
 // ── Legacy data from Google Sheet (cached in memory) ──
 let legacyCache = { data: [], fetchedAt: 0 };
@@ -228,20 +228,37 @@ module.exports = async function handler(req, res) {
     const teamNames = teamRows
       .filter(t => (t.manager_email || "").toLowerCase() === userEmail)
       .map(t => (t.display_name || "").trim().toLowerCase());
-    const visibleNames = [...new Set([...myNames, ...teamNames])];
+    // team_directory matches apply to both assigned_by and field_exec
+    const teamDirNames = [...new Set([...myNames, ...teamNames])];
 
-    if (visibleNames.length === 0) {
+    // Viewer/commenter: also match assigned_by against the name derived from
+    // their email (falling back to dashboard_users.name if derivation yields
+    // nothing). field_exec is intentionally not checked here.
+    const selfAssignedNames = [];
+    if (user.role === "viewer" || user.role === "commenter") {
+      const derived = (nameFromEmail(userEmail) || user.dbName || "").trim().toLowerCase();
+      if (derived) selfAssignedNames.push(derived);
+      // "Test Sahaj" is a legacy POC label that belongs to Sahaj Dureja.
+      if (userEmail === "sahaj.dureja@openhouse.in") selfAssignedNames.push("test sahaj");
+    }
+
+    if (teamDirNames.length === 0 && selfAssignedNames.length === 0) {
       return res.status(200).json([]);
     }
+
+    const matchesName = (target, name) => {
+      if (!target || !name) return false;
+      if (target === name || target.includes(name)) return true;
+      const tns = target.replace(/\s+/g, "");
+      const nns = name.replace(/\s+/g, "");
+      return tns === nns || tns.includes(nns);
+    };
 
     const filtered = allProperties.filter(r => {
       const poc = (r.assignedBy || "").toLowerCase();
       const exec = (r.fieldExec || "").toLowerCase();
-      // Match against POC or field exec
-      return visibleNames.some(name =>
-        (poc && (poc === name || poc.includes(name))) ||
-        (exec && (exec === name || exec.includes(name)))
-      );
+      return teamDirNames.some(n => matchesName(poc, n) || matchesName(exec, n)) ||
+             selfAssignedNames.some(n => matchesName(poc, n));
     });
 
     return res.status(200).json(filtered);

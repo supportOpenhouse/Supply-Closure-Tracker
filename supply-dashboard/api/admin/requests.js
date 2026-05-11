@@ -1,5 +1,5 @@
 const { getDB } = require("../_db");
-const { requireAdmin } = require("../_auth");
+const { requireAdmin, nameFromEmail } = require("../_auth");
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -33,11 +33,14 @@ module.exports = async function handler(req, res) {
       if (reqs.length === 0) return res.status(404).json({ error: "Request not found" });
 
       const { email, name } = reqs[0];
+      // Derived name from the email local-part drives visibility matching;
+      // fall back to the Google profile name only if derivation yields nothing.
+      const storedName = nameFromEmail(email) || name || "";
 
       // Add to users
       await sql`
         INSERT INTO dashboard_users (email, name, role, added_by)
-        VALUES (${email}, ${name}, 'viewer', ${admin.email})
+        VALUES (${email}, ${storedName}, 'viewer', ${admin.email})
         ON CONFLICT (email) DO NOTHING
       `;
 

@@ -1,5 +1,5 @@
 const { getDB } = require("../_db");
-const { requireAdmin } = require("../_auth");
+const { requireAdmin, nameFromEmail } = require("../_auth");
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -23,11 +23,14 @@ module.exports = async function handler(req, res) {
     const { email, name, role } = req.body;
     if (!email) return res.status(400).json({ error: "Email required" });
 
+    const normalizedEmail = email.toLowerCase();
+    const storedName = (name && name.trim()) || nameFromEmail(normalizedEmail) || "";
+
     try {
       await sql`
         INSERT INTO dashboard_users (email, name, role, added_by)
-        VALUES (${email.toLowerCase()}, ${name || ''}, ${role || 'viewer'}, ${admin.email})
-        ON CONFLICT (email) DO UPDATE SET role = ${role || 'viewer'}, name = ${name || ''}
+        VALUES (${normalizedEmail}, ${storedName}, ${role || 'viewer'}, ${admin.email})
+        ON CONFLICT (email) DO UPDATE SET role = ${role || 'viewer'}, name = ${storedName}
       `;
 
       // If there's a pending access request, mark it approved

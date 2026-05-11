@@ -33,7 +33,7 @@ async function verifyUserLive(email, jwtIssuedAt) {
   try {
     const { neon } = require("@neondatabase/serverless");
     const sql = neon(process.env.DATABASE_URL);
-    const rows = await sql`SELECT role, force_logout_at FROM dashboard_users WHERE LOWER(email) = ${email.toLowerCase()}`;
+    const rows = await sql`SELECT role, name, force_logout_at FROM dashboard_users WHERE LOWER(email) = ${email.toLowerCase()}`;
     if (rows.length === 0) return null; // user removed
     const user = rows[0];
     // If token was issued before force_logout_at, reject
@@ -41,10 +41,23 @@ async function verifyUserLive(email, jwtIssuedAt) {
       const forceTs = Math.floor(new Date(user.force_logout_at).getTime() / 1000);
       if (jwtIssuedAt < forceTs) return null;
     }
-    return { role: user.role };
+    return { role: user.role, name: user.name || "" };
   } catch {
     return null;
   }
+}
+
+// Derive a display name from an email local-part:
+// "admin.portal@openhouse.in" → "Admin Portal"
+function nameFromEmail(email) {
+  if (!email || typeof email !== "string") return "";
+  const local = email.split("@")[0] || "";
+  if (!local) return "";
+  return local
+    .split(".")
+    .filter(Boolean)
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join(" ");
 }
 
 async function requireAuth(req, res) {
@@ -60,6 +73,7 @@ async function requireAuth(req, res) {
     return null;
   }
   user.role = live.role;
+  user.dbName = live.name;
   return user;
 }
 
@@ -88,4 +102,4 @@ function parseCookies(str) {
   return obj;
 }
 
-module.exports = { createSession, verifySession, requireAuth, requireAdmin, setSessionCookie, clearSessionCookie, COOKIE_NAME };
+module.exports = { createSession, verifySession, requireAuth, requireAdmin, setSessionCookie, clearSessionCookie, nameFromEmail, COOKIE_NAME };
