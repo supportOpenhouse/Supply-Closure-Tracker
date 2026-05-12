@@ -154,13 +154,14 @@ function getLatestFollowupDate(p) {
   return arr[arr.length - 1].date || "";
 }
 
-// Match the WhatsApp cron logic: row is a pending follow-up if
-// (a) latest followup date is today or earlier (IST) AND
-// (b) closure_team_comments_at is NOT today (IST)
+// Row is a pending follow-up (yellow) if the latest followup date is today
+// or older (IST) AND the closure team has not caught up — meaning either no
+// closure comment exists, or the last closure comment predates the follow-up.
+// A closure comment on the same day as (or after) the follow-up clears the
+// flag, even if both are several days old.
 function isFollowupPending(p) {
   const latest = getLatestFollowupDate(p);
   if (!latest) return false;
-  // Compare YYYY-MM-DD in IST
   function istDateStr(val) {
     if (!val) return "";
     const d = new Date(val);
@@ -169,9 +170,9 @@ function isFollowupPending(p) {
   }
   const todayIST = istDateStr(new Date().toISOString());
   const latestIST = istDateStr(latest);
-  if (!latestIST || latestIST > todayIST) return false; // future
+  if (!latestIST || latestIST > todayIST) return false; // future follow-up
   const closureIST = istDateStr(p.closureTeamCommentsAt);
-  if (closureIST === todayIST) return false; // commented today
+  if (closureIST && closureIST >= latestIST) return false; // closure caught up
   return true;
 }
 
