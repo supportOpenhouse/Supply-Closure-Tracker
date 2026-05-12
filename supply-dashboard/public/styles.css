@@ -21,6 +21,9 @@ tr.datarow.expanded { background:#f0f4ff; }
 tr.datarow.followup-pending td { background:#fef9c3 !important; }
 tr.datarow.followup-pending:hover td { background:#fef08a !important; }
 tr.datarow.followup-pending.expanded td { background:#fef08a !important; }
+tr.datarow.priority-row td { background:#dcfce7 !important; }
+tr.datarow.priority-row:hover td { background:#bbf7d0 !important; }
+tr.datarow.priority-row.expanded td { background:#bbf7d0 !important; }
 .status-select { padding:2px 6px; border-radius:4px; font-size:10px; font-weight:600; border:none; outline:none; cursor:pointer; max-width:140px; }
 .comment-input { width:100%; min-width:120px; background:#f9fafb; border:1px solid #f3f4f6; border-radius:4px; padding:4px 6px; font-size:11px; color:#374151; outline:none; resize:vertical; min-height:26px; max-height:56px; font-family:inherit; transition:border-color 0.15s; }
 .comment-input:focus { border-color:#93c5fd; background:#fff; }
