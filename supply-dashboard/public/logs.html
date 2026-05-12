@@ -339,9 +339,17 @@ function toggleSort(col) {
 
 function formatDate(val) {
   if (!val) return "—";
-  const d = new Date(val);
-  if (isNaN(d.getTime())) return esc(val);
-  return d.toLocaleString("en-IN", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false });
+  // Show the DB clock value verbatim — do not let the browser apply a UTC→local
+  // shift. The DB string may arrive with or without a "Z" suffix; either way
+  // we just read the wall-clock components and format them.
+  const s = String(val);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})/);
+  if (!m) return esc(val);
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const day = m[3];
+  const mon = months[parseInt(m[2], 10) - 1] || m[2];
+  const year = m[1];
+  return day + " " + mon + " " + year + ", " + m[4] + ":" + m[5] + ":" + m[6];
 }
 
 function categoryChip(cat) {
