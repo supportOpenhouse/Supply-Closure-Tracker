@@ -12,28 +12,12 @@ function logActivity(sql, { uid, action, category, actor_email, actor_name, deta
   `.catch(err => console.error("Activity log failed:", err.message));
 }
 
-// Returns true if datestr (ISO/YYYY-MM-DD) is today (IST) or earlier
-function isTodayOrBeforeIST(datestr) {
-  if (!datestr) return false;
-  const d = new Date(datestr);
-  if (isNaN(d.getTime())) return false;
-  // IST end-of-today in UTC = today's midnight IST + 24h
-  // Easier: compare YYYY-MM-DD strings in IST
-  const dIST = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
-  const nowIST = new Date(Date.now() + (5.5 * 60 * 60 * 1000));
-  const dStr = dIST.toISOString().slice(0, 10);
-  const nowStr = nowIST.toISOString().slice(0, 10);
-  return dStr <= nowStr;
-}
-
-// Returns true if datestr (timestamp) is today (IST)
-function isTodayIST(datestr) {
-  if (!datestr) return false;
-  const d = new Date(datestr);
-  if (isNaN(d.getTime())) return false;
-  const dIST = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
-  const nowIST = new Date(Date.now() + (5.5 * 60 * 60 * 1000));
-  return dIST.toISOString().slice(0, 10) === nowIST.toISOString().slice(0, 10);
+// Convert any timestamp/date value to a YYYY-MM-DD string in IST.
+function istDateStr(val) {
+  if (!val) return "";
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return "";
+  return new Date(d.getTime() + (5.5 * 60 * 60 * 1000)).toISOString().slice(0, 10);
 }
 
 // Returns the latest followup date string from a JSONB array
@@ -178,11 +162,20 @@ module.exports = async function handler(req, res) {
 
     const allRows = [...liveRows, ...legacyRows];
 
-    // ── 2. Filter to follow-up rows (latest followup <= today AND closure_team_comments_at NOT today) ──
+    // ── 2. Filter to follow-up rows (mirrors the dashboard's yellow-row rule) ──
+    // A row is a pending follow-up if the latest followup date is today or
+    // older (IST) AND the closure team has not caught up — i.e., either no
+    // closure comment exists, or the last closure comment predates the
+    // follow-up. A closure comment on the same day as (or after) the latest
+    // follow-up clears the flag, even if both are several days old.
     const followups = allRows.filter(p => {
       const latest = getLatestFollowupDate(p.followup_dates);
-      if (!isTodayOrBeforeIST(latest)) return false;
-      if (isTodayIST(p.closure_team_comments_at)) return false; // commented today → skip
+      if (!latest) return false;
+      const latestIST = istDateStr(latest);
+      const todayIST = istDateStr(new Date().toISOString());
+      if (!latestIST || latestIST > todayIST) return false; // future follow-up
+      const closureIST = istDateStr(p.closure_team_comments_at);
+      if (closureIST && closureIST >= latestIST) return false; // closure caught up
       return true;
     });
 
