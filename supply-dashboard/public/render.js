@@ -326,7 +326,7 @@ function _render() {
         if (isAdmin) h += '<span id="dot_'+p.uid+'_assigned_by" class="save-dot '+(saveStatus[p.uid+'_assigned_by']||'')+'"></span>';
         // Edit Property button (admin only) — opens form admin to edit any field
         if (isAdmin) {
-          h += '<a href="https://backend-form-automation-oh-olie.onrender.com/admin?uid='+encodeURIComponent(p.uid)+'" target="_blank" rel="noopener" style="padding:5px 12px;font-size:12px;font-weight:600;background:#0369a1;color:#fff;border-radius:4px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">&#9998; Edit Property</a>';
+          h += '<a href="https://ohsupplyforms.onrender.com//admin?uid='+encodeURIComponent(p.uid)+'" target="_blank" rel="noopener" style="padding:5px 12px;font-size:12px;font-weight:600;background:#0369a1;color:#fff;border-radius:4px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">&#9998; Edit Property</a>';
         }
         h += '</div>';
       }
