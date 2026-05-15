@@ -58,42 +58,14 @@ function getBalconyView(p) {
   return [...new Set(bd.map(b => b.view))].join(", ");
 }
 
-// Name cleanup: normalize POC / field exec names — derived from adminTeam (team_directory)
+// POC / field exec name handling: show values as stored. We only strip
+// "OH Sold" sentinel values; no alias-based normalization.
 const POC_REMOVE = ["oh sold", "oh_sold", ""];
-
-function buildAliasMap() {
-  var map = {};
-  if (typeof adminTeam !== "undefined" && adminTeam && adminTeam.length > 0) {
-    adminTeam.forEach(function(t) {
-      var full = (t.display_name || "").trim();
-      if (!full) return;
-      var firstLower = full.split(" ")[0].toLowerCase();
-      var noSpaceLower = full.toLowerCase().replace(/\s+/g, "");
-      map[firstLower] = full;
-      map[noSpaceLower] = full;
-      map[full.toLowerCase()] = full;
-    });
-  }
-  return map;
-}
 
 function cleanPocName(name) {
   if (!name) return "";
   var trimmed = name.trim();
   if (POC_REMOVE.includes(trimmed.toLowerCase())) return "";
-  var aliasMap = buildAliasMap();
-  if (trimmed.includes("/")) {
-    var parts = trimmed.split("/").map(function(s){return s.trim()});
-    parts = parts.map(function(p) {
-      var noSpace = p.toLowerCase().replace(/\s+/g, "");
-      return aliasMap[noSpace] || aliasMap[p.toLowerCase()] || p;
-    });
-    return parts.join(" / ");
-  }
-  var lower = trimmed.toLowerCase().replace(/\s+/g, "");
-  if (aliasMap[lower]) return aliasMap[lower];
-  var lowerSpaced = trimmed.toLowerCase().trim();
-  if (aliasMap[lowerSpaced]) return aliasMap[lowerSpaced];
   return trimmed;
 }
 

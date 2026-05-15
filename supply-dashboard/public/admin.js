@@ -80,32 +80,6 @@ async function handleRequest(id, action) {
   renderOverlays();
 }
 
-async function addTeamMember() {
-  const email = document.getElementById("teamEmail").value.trim();
-  const display_name = document.getElementById("teamName").value.trim();
-  const manager_email = document.getElementById("teamManager").value;
-  if (!email || !display_name) return alert("Email and Display Name are required");
-
-  await fetch("/api/admin/team", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, display_name, manager_email })
-  });
-  await loadTeam();
-  renderOverlays();
-}
-
-async function removeTeamMember(id) {
-  if (!confirm("Remove this team member? Their visibility rules will be removed.")) return;
-  await fetch("/api/admin/team", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id })
-  });
-  await loadTeam();
-  renderOverlays();
-}
-
 // ── Bug Reporter ──
 function openBugForm() { showBugForm = true; bugSubmitted = false; renderOverlays(); }
 function closeBugForm() { showBugForm = false; bugSubmitted = false; renderOverlays(); }

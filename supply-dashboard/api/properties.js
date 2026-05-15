@@ -164,85 +164,40 @@ module.exports = async function handler(req, res) {
     // Step 3: Merge live + legacy
     const allProperties = [...liveProperties, ...legacyWithEdits];
 
-    // Step 4: Load team directory for name normalization + visibility
-    let teamRows = [];
-    try {
-      teamRows = await sql`SELECT email, display_name, manager_email FROM team_directory WHERE is_active = true`;
-    } catch (teamErr) {
-      console.error("team_directory query failed:", teamErr.message);
-    }
-
-    // Step 5: Normalize POC names — auto-derived from team_directory display_name
-    // Build alias map: first-word-lower + no-space-lower → display_name
-    const aliasToName = {};
-    teamRows.forEach(t => {
-      const full = (t.display_name || "").trim();
-      if (!full) return;
-      const firstLower = full.split(" ")[0].toLowerCase();
-      const noSpaceLower = full.toLowerCase().replace(/\s+/g, "");
-      aliasToName[firstLower] = full;
-      aliasToName[noSpaceLower] = full;
-      aliasToName[full.toLowerCase()] = full;
-    });
-
-    const POC_REMOVE = ["oh sold", "oh_sold"];
-
-    function cleanPoc(name) {
-      if (!name) return "";
-      const trimmed = name.trim();
-      if (POC_REMOVE.includes(trimmed.toLowerCase())) return "";
-      // Handle "Shashank / Rupali" → normalize each part
-      if (trimmed.includes("/")) {
-        return trimmed.split("/").map(s => {
-          const part = s.trim();
-          const noSpace = part.toLowerCase().replace(/\s+/g, "");
-          return aliasToName[noSpace] || aliasToName[part.toLowerCase()] || part;
-        }).join(" / ");
-      }
-      // Try no-space match (catches "RahulSheel" → "rahulsheel")
-      const noSpace = trimmed.toLowerCase().replace(/\s+/g, "");
-      if (aliasToName[noSpace]) return aliasToName[noSpace];
-      const lower = trimmed.toLowerCase();
-      if (aliasToName[lower]) return aliasToName[lower];
-      return trimmed;
-    }
-
-    allProperties.forEach(p => {
-      if (p.assignedBy) p.assignedBy = cleanPoc(p.assignedBy);
-      if (p.fieldExec) p.fieldExec = cleanPoc(p.fieldExec);
-    });
-
-    // Step 6: Apply visibility filtering from team_directory
+    // Step 4: Visibility filter
     if (user.role === "admin" || user.role === "demand" || user.role === "price_view") {
       return res.status(200).json(allProperties);
     }
 
     const userEmail = user.email.toLowerCase();
+    // Own name: prefer dashboard_users.name, fall back to email-derived.
+    const ownName = (user.dbName || nameFromEmail(userEmail) || "").trim();
 
-    // Non-admin/non-demand users: see their own properties + their team's
-    // Own: rows in team_directory where email = userEmail
-    // Team: rows in team_directory where manager_email = userEmail
-    const myNames = teamRows
-      .filter(t => (t.email || "").toLowerCase() === userEmail)
-      .map(t => (t.display_name || "").trim().toLowerCase());
-    const teamNames = teamRows
-      .filter(t => (t.manager_email || "").toLowerCase() === userEmail)
-      .map(t => (t.display_name || "").trim().toLowerCase());
-    // team_directory matches apply to both assigned_by and field_exec
-    const teamDirNames = [...new Set([...myNames, ...teamNames])];
-
-    // Viewer/commenter: also match assigned_by against the name derived from
-    // their email (falling back to dashboard_users.name if derivation yields
-    // nothing). field_exec is intentionally not checked here.
-    const selfAssignedNames = [];
-    if (user.role === "viewer" || user.role === "commenter") {
-      const derived = (nameFromEmail(userEmail) || user.dbName || "").trim().toLowerCase();
-      if (derived) selfAssignedNames.push(derived);
-      // "Test Sahaj" is a legacy POC label that belongs to Sahaj Dureja.
-      if (userEmail === "sahaj.dureja@openhouse.in") selfAssignedNames.push("test sahaj");
+    // Managed team: look up the dashboard user's name in `users.name` and read
+    // `users.managed_team` (JSONB/text array of employee display names).
+    let managedNames = [];
+    if (ownName) {
+      try {
+        const rows = await sql`SELECT managed_team FROM users WHERE LOWER(name) = ${ownName.toLowerCase()} LIMIT 1`;
+        if (rows.length > 0 && rows[0].managed_team) {
+          const raw = rows[0].managed_team;
+          const arr = Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw) : []);
+          managedNames = arr.map(n => (n || "").trim().toLowerCase()).filter(Boolean);
+        }
+      } catch (err) {
+        console.error("users.managed_team lookup failed:", err.message);
+      }
     }
 
-    if (teamDirNames.length === 0 && selfAssignedNames.length === 0) {
+    const ownNames = ownName ? [ownName.toLowerCase()] : [];
+    const overrides = [];
+    // "Test Sahaj" is a legacy POC label that belongs to Sahaj Dureja.
+    if ((user.role === "viewer" || user.role === "commenter") &&
+        userEmail === "sahaj.dureja@openhouse.in") {
+      overrides.push("test sahaj");
+    }
+
+    if (ownNames.length === 0 && managedNames.length === 0 && overrides.length === 0) {
       return res.status(200).json([]);
     }
 
@@ -257,8 +212,12 @@ module.exports = async function handler(req, res) {
     const filtered = allProperties.filter(r => {
       const poc = (r.assignedBy || "").toLowerCase();
       const exec = (r.fieldExec || "").toLowerCase();
-      return teamDirNames.some(n => matchesName(poc, n) || matchesName(exec, n)) ||
-             selfAssignedNames.some(n => matchesName(poc, n));
+      // Own + overrides: assigned_by only.
+      for (const n of ownNames) { if (matchesName(poc, n)) return true; }
+      for (const n of overrides) { if (matchesName(poc, n)) return true; }
+      // Managed team: assigned_by + field_exec.
+      for (const n of managedNames) { if (matchesName(poc, n) || matchesName(exec, n)) return true; }
+      return false;
     });
 
     return res.status(200).json(filtered);

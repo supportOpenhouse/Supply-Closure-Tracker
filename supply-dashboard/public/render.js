@@ -314,9 +314,7 @@ function _render() {
 
       // POC edit (admin = editable, price_view = read-only visible)
       if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'price_view')) {
-        var pocFromData = DATA.map(function(d){return d.assignedBy}).filter(Boolean);
-        var pocFromTeam = (adminTeam || []).map(function(t){return t.display_name}).filter(Boolean);
-        var pocNames = [...new Set([...pocFromData, ...pocFromTeam])].sort();
+        var pocNames = [...new Set(DATA.map(function(d){return d.assignedBy}).filter(Boolean))].sort();
         h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px" onclick="event.stopPropagation()">';
         h += '<span style="font-size:12px;font-weight:600;color:#0369a1">'+(isAdmin?'Change POC:':'POC:')+'</span>';
         h += '<select '+(isAdmin?'onchange="changePoc(\''+p.uid+'\',this.value)"':'disabled')+' style="padding:4px 8px;font-size:12px;border:1px solid #93c5fd;border-radius:4px;outline:none;'+(isAdmin?'':'background:#f3f4f6;cursor:not-allowed;color:#6b7280')+'">';

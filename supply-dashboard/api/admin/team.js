@@ -1,82 +1,45 @@
 const { getDB } = require("../_db");
-const { requireAuth, requireAdmin } = require("../_auth");
+const { requireAuth } = require("../_auth");
 
+// Read-only Team Directory: lists managers (rows in `users` with a non-empty
+// managed_team array) and their direct employees. There is no longer a
+// dashboard-side editor — managed_team is managed outside this app.
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, PATCH, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-  // GET is available to admin + price_view (they need team list for POC display)
-  // Mutations (POST/DELETE/PATCH) are admin-only
-  let user;
-  if (req.method === "GET") {
-    user = await requireAuth(req, res);
-    if (!user) return;
-    if (user.role !== "admin" && user.role !== "price_view") {
-      return res.status(403).json({ error: "Access denied" });
-    }
-  } else {
-    user = await requireAdmin(req, res);
-    if (!user) return;
+  const user = await requireAuth(req, res);
+  if (!user) return;
+  if (user.role !== "admin" && user.role !== "price_view") {
+    return res.status(403).json({ error: "Access denied" });
   }
 
   const sql = getDB();
 
-  // GET - list all team members
-  if (req.method === "GET") {
-    const team = await sql`
-      SELECT id, email, display_name, manager_email, is_active, created_at
-      FROM team_directory
-      ORDER BY display_name ASC
-    `;
-    return res.status(200).json(team);
+  try {
+    const rows = await sql`SELECT name, managed_team FROM users WHERE managed_team IS NOT NULL`;
+    const managers = [];
+    rows.forEach(r => {
+      const name = (r.name || "").trim();
+      if (!name) return;
+      const raw = r.managed_team;
+      let arr = [];
+      try {
+        arr = Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw) : []);
+      } catch {
+        arr = [];
+      }
+      const employees = (arr || []).map(n => (n || "").toString().trim()).filter(Boolean);
+      if (employees.length === 0) return;
+      managers.push({ name, employees });
+    });
+    managers.sort((a, b) => a.name.localeCompare(b.name));
+    return res.status(200).json(managers);
+  } catch (err) {
+    console.error("Team lookup failed:", err.message);
+    return res.status(500).json({ error: "Failed to load team: " + err.message });
   }
-
-  // POST - add team member
-  if (req.method === "POST") {
-    const { email, display_name, manager_email } = req.body;
-    if (!email || !display_name) {
-      return res.status(400).json({ error: "email and display_name required" });
-    }
-
-    await sql`
-      INSERT INTO team_directory (email, display_name, manager_email)
-      VALUES (${email.toLowerCase()}, ${display_name}, ${manager_email || ''})
-      ON CONFLICT (email) DO UPDATE SET
-        display_name = ${display_name},
-        manager_email = ${manager_email || ''}
-    `;
-
-    return res.status(200).json({ success: true });
-  }
-
-  // PATCH - update team member
-  if (req.method === "PATCH") {
-    const { id, display_name, manager_email, is_active } = req.body;
-    if (!id) return res.status(400).json({ error: "id required" });
-
-    if (display_name !== undefined) {
-      await sql`UPDATE team_directory SET display_name = ${display_name} WHERE id = ${id}`;
-    }
-    if (manager_email !== undefined) {
-      await sql`UPDATE team_directory SET manager_email = ${manager_email} WHERE id = ${id}`;
-    }
-    if (is_active !== undefined) {
-      await sql`UPDATE team_directory SET is_active = ${is_active} WHERE id = ${id}`;
-    }
-
-    return res.status(200).json({ success: true });
-  }
-
-  // DELETE - remove team member
-  if (req.method === "DELETE") {
-    const { id } = req.body;
-    if (!id) return res.status(400).json({ error: "id required" });
-
-    await sql`DELETE FROM team_directory WHERE id = ${id}`;
-    return res.status(200).json({ success: true });
-  }
-
-  return res.status(405).json({ error: "Method not allowed" });
 };

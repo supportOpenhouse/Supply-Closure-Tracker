@@ -75,41 +75,24 @@ function renderOverlays() {
       h += '</div>';
 
     } else if (adminTab === 'team') {
-      h += '<div class="admin-section"><h3>Add Team Member</h3>';
-      h += '<div style="font-size:11px;color:#6b7280;margin-bottom:8px">Display name must exactly match names in assigned_by / field_exec columns</div>';
-      h += '<div class="admin-add">';
-      h += '<input id="teamEmail" placeholder="email@openhouse.in" style="flex:1">';
-      h += '<input id="teamName" placeholder="Display Name" style="flex:1">';
-      h += '</div>';
-      h += '<div class="admin-add" style="margin-top:4px">';
-      h += '<select id="teamManager" style="flex:1"><option value="">No Manager</option>';
-      adminTeam.forEach(t => {
-        h += '<option value="'+esc(t.email)+'">'+esc(t.display_name)+' ('+esc(t.email)+')</option>';
-      });
-      h += '</select>';
-      h += '<button onclick="addTeamMember()">Add</button>';
-      h += '</div></div>';
-
       h += '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:#0369a1">';
-      h += '<b>How visibility works:</b> Each person sees records where their Display Name appears in Assigned By, Field Exec, or Token By. They also see records of their direct reportees. Admins see everything.';
+      h += '<b>How visibility works:</b> Each user sees records where their name appears in Assigned By, plus records of anyone in their <code>managed_team</code> (in the <code>users</code> table). Admins, Demand, and Price View see everything. This view is read-only — edit <code>managed_team</code> in the database.';
       h += '</div>';
 
       h += '<div class="admin-section"><h3>Team Directory</h3>';
       h += '<div class="admin-list">';
       if (adminTeam.length === 0) {
-        h += '<div class="admin-row" style="color:#9ca3af;justify-content:center">No team members yet</div>';
+        h += '<div class="admin-row" style="color:#9ca3af;justify-content:center">No managers found</div>';
       }
       adminTeam.forEach(t => {
-        const mgr = adminTeam.find(m => m.email.toLowerCase() === (t.manager_email||'').toLowerCase());
-        h += '<div class="admin-row" style="flex-wrap:wrap;gap:4px">';
-        h += '<div style="flex:1;min-width:200px">';
-        h += '<div><span class="email">'+esc(t.display_name)+'</span></div>';
-        h += '<div style="font-size:11px;color:#6b7280">'+esc(t.email);
-        if (mgr) h += ' &rarr; reports to <b>'+esc(mgr.display_name)+'</b>';
-        h += '</div></div>';
-        h += '<div style="display:flex;gap:4px">';
-        h += '<button onclick="removeTeamMember('+t.id+')" style="border-color:#fecaca;color:#ef4444">Remove</button>';
-        h += '</div></div>';
+        h += '<div class="admin-row" style="flex-direction:column;align-items:flex-start;gap:4px">';
+        h += '<div><span class="email">'+esc(t.name)+'</span> <span style="font-size:11px;color:#6b7280">manages '+t.employees.length+'</span></div>';
+        h += '<div style="font-size:12px;color:#374151;padding-left:8px">';
+        t.employees.forEach((e, i) => {
+          h += (i > 0 ? ', ' : '') + esc(e);
+        });
+        h += '</div>';
+        h += '</div>';
       });
       h += '</div></div>';
     }
