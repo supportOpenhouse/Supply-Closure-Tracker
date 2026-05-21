@@ -201,7 +201,12 @@ function _render() {
     h += '<td onclick="event.stopPropagation()">';
     if (canEdit() && !isDemand) {
       h += '<select class="status-select" style="background:'+sc.bg+';color:'+sc.text+'" onchange="changeStatus(\''+p.uid+'\',this.value)">';
-      ALL_STATUSES.forEach(s => { h += '<option value="'+esc(s)+'"'+(status===s?' selected':'')+' style="background:#fff;color:#111827">'+esc(s)+'</option>'; });
+      // If the current status is an auto-derived stage (not user-selectable),
+      // still show it as the selected option so the displayed value is correct.
+      if (MANUAL_STATUSES.indexOf(status) < 0) {
+        h += '<option value="'+esc(status)+'" selected style="background:#fff;color:#111827">'+esc(status)+'</option>';
+      }
+      MANUAL_STATUSES.forEach(s => { h += '<option value="'+esc(s)+'"'+(status===s?' selected':'')+' style="background:#fff;color:#111827">'+esc(s)+'</option>'; });
       h += '</select>';
       h += '<span id="dot_'+p.uid+'_status_override" class="save-dot '+(saveStatus[p.uid+'_status_override']||'')+'"></span>';
     } else {

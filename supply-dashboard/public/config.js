@@ -1,5 +1,12 @@
 const ALL_STATUSES = ["AMA Req","AMA Signed","Cancelled Post Token","Dead - Legal","Dead - Not Interested","Dead - Sold","Duplicacy","Followup","Future Prospect","Hold","Key Handover","Listed","Negotiation","OH Rejected","Price High","Seller Rejected","Token Requested","Token Transferred","Visit Completed","Visit Scheduled"];
 
+// Auto-stage statuses — derived from form submissions (see getStage()).
+// Users cannot manually set these; they are excluded from the change dropdown.
+const AUTO_STAGE_STATUSES = ["Cancelled Post Token","Listed","Key Handover","AMA Signed","AMA Req","Token Transferred","Token Requested","Visit Completed","Visit Scheduled"];
+
+// Statuses a user may manually pick when changing status.
+const MANUAL_STATUSES = ALL_STATUSES.filter(function(s) { return AUTO_STAGE_STATUSES.indexOf(s) < 0; });
+
 const STATUS_COLORS = {
   "Visit Scheduled":     {bg:"#64748b",text:"#fff"},
   "Visit Completed":     {bg:"#0d9488",text:"#fff"},
