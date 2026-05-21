@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS cp_inventory_status (
   valid_cp_id   BOOLEAN DEFAULT FALSE,
   supply_status TEXT DEFAULT '',    -- computed supply-tracker status
   cp_status     TEXT DEFAULT '',    -- derived from supply_status
-  updated_at    TIMESTAMP DEFAULT NOW()
+  updated_at    TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'Asia/Kolkata')  -- IST
 );
 
 CREATE INDEX IF NOT EXISTS idx_cp_inventory_cp_id ON cp_inventory_status(cp_id);
@@ -131,14 +131,14 @@ BEGIN
     cp_is_valid_id(NEW.lead_id),
     v_status,
     cp_status_for(v_status),
-    NOW()
+    NOW() AT TIME ZONE 'Asia/Kolkata'
   )
   ON CONFLICT (uid) DO UPDATE SET
     cp_id         = EXCLUDED.cp_id,
     valid_cp_id   = EXCLUDED.valid_cp_id,
     supply_status = EXCLUDED.supply_status,
     cp_status     = EXCLUDED.cp_status,
-    updated_at    = NOW();
+    updated_at    = NOW() AT TIME ZONE 'Asia/Kolkata';
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -173,7 +173,7 @@ EXECUTE FUNCTION cp_sync_inventory_status_delete();
 
 -- ── 5. Backfill existing properties ─────────────────────────
 INSERT INTO cp_inventory_status (uid, cp_id, valid_cp_id, supply_status, cp_status, updated_at)
-SELECT q.uid, q.cp_id, q.valid_cp_id, q.ss, cp_status_for(q.ss), NOW()
+SELECT q.uid, q.cp_id, q.valid_cp_id, q.ss, cp_status_for(q.ss), NOW() AT TIME ZONE 'Asia/Kolkata'
 FROM (
   SELECT
     p.uid                       AS uid,
@@ -187,4 +187,4 @@ ON CONFLICT (uid) DO UPDATE SET
   valid_cp_id   = EXCLUDED.valid_cp_id,
   supply_status = EXCLUDED.supply_status,
   cp_status     = EXCLUDED.cp_status,
-  updated_at    = NOW();
+  updated_at    = NOW() AT TIME ZONE 'Asia/Kolkata';
