@@ -33,7 +33,7 @@ async function fetchProperties() {
 function downloadCSV() {
   var filtered = getFiltered();
   var cols = [
-    {hdr:"UID",key:"uid"},{hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},
+    {hdr:"UID",key:"uid"},{hdr:"Lead ID",key:"leadId"},{hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},
     {hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},
     {hdr:"Config",key:"configuration"},{hdr:"Ask (Lakhs)",key:"demandPrice"},
     {hdr:"Area (Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},
