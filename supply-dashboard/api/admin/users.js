@@ -84,7 +84,19 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "Cannot remove yourself" });
     }
 
-    await sql`DELETE FROM dashboard_users WHERE LOWER(email) = ${email.toLowerCase()}`;
+    const target = email.toLowerCase();
+    const existing = await sql`SELECT role FROM dashboard_users WHERE email = ${target}`;
+    await sql`DELETE FROM dashboard_users WHERE LOWER(email) = ${target}`;
+
+    if (existing.length > 0) {
+      logUserActivity(sql, {
+        uid: target,
+        action: "user_removed",
+        actor_email: admin.email,
+        actor_name: admin.name || admin.email,
+        details: { target_email: target, prior_role: existing[0].role || "" },
+      });
+    }
     return res.status(200).json({ success: true });
   }
 
