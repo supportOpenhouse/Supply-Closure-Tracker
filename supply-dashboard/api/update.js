@@ -1,5 +1,6 @@
 const { getDB } = require("./_db");
 const { requireAuth } = require("./_auth");
+const { syncOne: syncSubmissionsOne } = require("./_submissions-sync");
 
 const COMMENT_FIELDS = [
   "status_override",
@@ -208,6 +209,13 @@ module.exports = async function handler(req, res) {
           details: details
         });
       }
+    }
+
+    // Mirror status changes to the external submissions DB (fire-and-forget).
+    // The cp_inventory_status trigger has already run synchronously, so the
+    // freshly computed cp_status / supply_status are available to syncOne.
+    if (field === "status_override") {
+      syncSubmissionsOne(uid).catch(err => console.error("Submissions sync failed:", err.message));
     }
 
     return res.status(200).json({ success: true, uid, field, value });

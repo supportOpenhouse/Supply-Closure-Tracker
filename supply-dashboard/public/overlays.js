@@ -74,6 +74,14 @@ function renderOverlays() {
       h += '<div style="font-size:10px;color:#9ca3af;margin-top:4px">Invalidates all sessions. Everyone (including you) must log in again.</div>';
       h += '</div>';
 
+      // One-time bulk sync to Submissions DB. Remove this block when no longer needed.
+      h += '<div class="admin-section" style="border-top:2px solid #fde68a;padding-top:12px">';
+      h += '<h3 style="color:#d97706">One-time sync</h3>';
+      h += '<button id="syncSubBtn" onclick="syncSubmissions()" style="padding:6px 14px;font-size:11px;background:#d97706;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:500">Sync all to Submissions DB</button>';
+      h += '<div style="font-size:10px;color:#9ca3af;margin-top:4px">Pushes <code>cp_status</code> &rarr; <code>submissions.status</code> and <code>supply_status</code> &rarr; <code>submissions.rejected_reason</code> for every row where <code>valid_cp_id = true</code>.</div>';
+      h += '<div id="syncSubResult" style="font-size:11px;color:#374151;margin-top:6px"></div>';
+      h += '</div>';
+
     } else if (adminTab === 'team') {
       h += '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:#0369a1">';
       h += '<b>How visibility works:</b> Each user sees records where their name appears in Assigned By, plus records of anyone in their <code>managed_team</code> (in the <code>users</code> table). Admins, Demand, and Price View see everything. This view is read-only — edit <code>managed_team</code> in the database.';

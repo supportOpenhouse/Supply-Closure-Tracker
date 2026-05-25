@@ -80,6 +80,25 @@ async function handleRequest(id, action) {
   renderOverlays();
 }
 
+// ── One-time: bulk sync to Submissions DB ──
+async function syncSubmissions() {
+  if (!confirm("Push every valid CP lead's status to the Submissions DB? This bulk-updates the external table.")) return;
+  const btn = document.getElementById("syncSubBtn");
+  const out = document.getElementById("syncSubResult");
+  if (btn) { btn.disabled = true; btn.textContent = "Syncing..."; }
+  if (out) out.textContent = "";
+  try {
+    const res = await fetch("/api/admin/sync-submissions", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed");
+    if (out) out.textContent = "Eligible: " + data.eligible + " · Matched & updated: " + data.matched;
+  } catch (e) {
+    if (out) out.textContent = "Error: " + e.message;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Sync all to Submissions DB"; }
+  }
+}
+
 // ── Bug Reporter ──
 function openBugForm() { showBugForm = true; bugSubmitted = false; renderOverlays(); }
 function closeBugForm() { showBugForm = false; bugSubmitted = false; renderOverlays(); }
