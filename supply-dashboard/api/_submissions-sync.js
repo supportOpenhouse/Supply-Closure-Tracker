@@ -3,22 +3,22 @@ const { getSubmissionsDB } = require("./_submissions-db");
 
 // Push one cp_inventory_status row to the external `submissions` table.
 // Only valid_cp_id = true rows are eligible.
+// Match key: submissions.forms_uid = cp_inventory_status.uid (= properties.uid).
 // Returns the number of submissions rows updated (0 if no matching forms_uid).
 async function syncOne(uid) {
   const sql = getDB();
   const rows = await sql`
-    SELECT cp_id, supply_status, cp_status
+    SELECT supply_status, cp_status
     FROM cp_inventory_status
     WHERE uid = ${uid} AND valid_cp_id = true
   `;
   if (rows.length === 0) return 0;
   const r = rows[0];
-  if (!r.cp_id) return 0;
   const subSql = getSubmissionsDB();
   const result = await subSql`
     UPDATE submissions
     SET status = ${r.cp_status || ""}, rejected_reason = ${r.supply_status || ""}
-    WHERE forms_uid = ${r.cp_id}
+    WHERE forms_uid = ${uid}
     RETURNING forms_uid
   `;
   return result.length;
@@ -30,9 +30,9 @@ async function syncOne(uid) {
 async function syncAll() {
   const sql = getDB();
   const rows = await sql`
-    SELECT cp_id, supply_status, cp_status
+    SELECT uid, supply_status, cp_status
     FROM cp_inventory_status
-    WHERE valid_cp_id = true AND cp_id IS NOT NULL AND cp_id <> ''
+    WHERE valid_cp_id = true
   `;
   if (rows.length === 0) return { eligible: 0, matched: 0 };
   const subSql = getSubmissionsDB();
@@ -50,7 +50,7 @@ async function syncAll() {
         : `($${o + 1}, $${o + 2}, $${o + 3})`;
     }).join(",");
     const params = [];
-    slice.forEach(r => params.push(r.cp_id, r.cp_status || "", r.supply_status || ""));
+    slice.forEach(r => params.push(r.uid, r.cp_status || "", r.supply_status || ""));
     const query = `
       UPDATE submissions s
       SET status = v.status, rejected_reason = v.reason
