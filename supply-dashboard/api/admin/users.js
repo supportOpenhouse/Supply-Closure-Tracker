@@ -1,6 +1,13 @@
 const { getDB } = require("../_db");
 const { requireAdmin, nameFromEmail } = require("../_auth");
 
+// Fire-and-forget activity log entry for a user-role event.
+function logUserActivity(sql, { uid, action, actor_email, actor_name, details }) {
+  sql`INSERT INTO activity_logs (uid, action, category, actor_email, actor_name, details, dashboard)
+      VALUES (${uid}, ${action}, ${"admin"}, ${actor_email || ""}, ${actor_name || ""}, ${JSON.stringify(details)}, ${"Supply Dashboard"})
+  `.catch(err => console.error("Activity log failed:", err.message));
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, PATCH, OPTIONS");
@@ -25,19 +32,42 @@ module.exports = async function handler(req, res) {
 
     const normalizedEmail = email.toLowerCase();
     const storedName = (name && name.trim()) || nameFromEmail(normalizedEmail) || "";
+    const newRole = role || "viewer";
 
     try {
+      // Capture existing role (if any) so we can tell add vs. role change.
+      const existing = await sql`SELECT role FROM dashboard_users WHERE email = ${normalizedEmail}`;
+      const oldRole = existing.length > 0 ? (existing[0].role || "") : null;
+
       await sql`
         INSERT INTO dashboard_users (email, name, role, added_by)
-        VALUES (${normalizedEmail}, ${storedName}, ${role || 'viewer'}, ${admin.email})
-        ON CONFLICT (email) DO UPDATE SET role = ${role || 'viewer'}, name = ${storedName}
+        VALUES (${normalizedEmail}, ${storedName}, ${newRole}, ${admin.email})
+        ON CONFLICT (email) DO UPDATE SET role = ${newRole}, name = ${storedName}
       `;
 
       // If there's a pending access request, mark it approved
       await sql`
         UPDATE access_requests SET status = 'approved', reviewed_by = ${admin.email}, reviewed_at = NOW()
-        WHERE LOWER(email) = ${email.toLowerCase()} AND status = 'pending'
+        WHERE LOWER(email) = ${normalizedEmail} AND status = 'pending'
       `;
+
+      if (oldRole === null) {
+        logUserActivity(sql, {
+          uid: normalizedEmail,
+          action: "user_added",
+          actor_email: admin.email,
+          actor_name: admin.name || admin.email,
+          details: { target_email: normalizedEmail, target_name: storedName, role: newRole },
+        });
+      } else if (oldRole !== newRole) {
+        logUserActivity(sql, {
+          uid: normalizedEmail,
+          action: "user_role_changed",
+          actor_email: admin.email,
+          actor_name: admin.name || admin.email,
+          details: { target_email: normalizedEmail, old: oldRole, new: newRole },
+        });
+      }
 
       return res.status(200).json({ success: true });
     } catch (err) {
