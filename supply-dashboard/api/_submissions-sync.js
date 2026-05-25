@@ -17,7 +17,7 @@ async function syncOne(uid) {
   const subSql = getSubmissionsDB();
   const result = await subSql`
     UPDATE submissions
-    SET status = ${r.cp_status || ""}, rejected_reason = ${r.supply_status || ""}
+    SET status = ${r.cp_status || ""}, status_reason = ${r.supply_status || ""}
     WHERE forms_uid = ${uid}
     RETURNING forms_uid
   `;
@@ -53,7 +53,7 @@ async function syncAll() {
     slice.forEach(r => params.push(r.uid, r.cp_status || "", r.supply_status || ""));
     const query = `
       UPDATE submissions s
-      SET status = v.status, rejected_reason = v.reason
+      SET status = v.status, status_reason = v.reason
       FROM (VALUES ${placeholders}) AS v(forms_uid, status, reason)
       WHERE s.forms_uid = v.forms_uid
       RETURNING s.forms_uid

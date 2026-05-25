@@ -78,7 +78,7 @@ function renderOverlays() {
       h += '<div class="admin-section" style="border-top:2px solid #fde68a;padding-top:12px">';
       h += '<h3 style="color:#d97706">One-time sync</h3>';
       h += '<button id="syncSubBtn" onclick="syncSubmissions()" style="padding:6px 14px;font-size:11px;background:#d97706;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:500">Sync all to Submissions DB</button>';
-      h += '<div style="font-size:10px;color:#9ca3af;margin-top:4px">Pushes <code>cp_status</code> &rarr; <code>submissions.status</code> and <code>supply_status</code> &rarr; <code>submissions.rejected_reason</code> for every row where <code>valid_cp_id = true</code>.</div>';
+      h += '<div style="font-size:10px;color:#9ca3af;margin-top:4px">Pushes <code>cp_status</code> &rarr; <code>submissions.status</code> and <code>supply_status</code> &rarr; <code>submissions.status_reason</code> for every row where <code>valid_cp_id = true</code>.</div>';
       h += '<div id="syncSubResult" style="font-size:11px;color:#374151;margin-top:6px"></div>';
       h += '</div>';
 
