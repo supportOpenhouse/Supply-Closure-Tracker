@@ -57,7 +57,12 @@ module.exports = async function handler(req, res) {
           action: "user_added",
           actor_email: admin.email,
           actor_name: admin.name || admin.email,
-          details: { target_email: normalizedEmail, target_name: storedName, role: newRole },
+          details: {
+            target_email: normalizedEmail,
+            target_name: storedName,
+            source: "manual",
+            changes: { role: { old: null, new: newRole } },
+          },
         });
       } else if (oldRole !== newRole) {
         logUserActivity(sql, {
@@ -65,7 +70,10 @@ module.exports = async function handler(req, res) {
           action: "user_role_changed",
           actor_email: admin.email,
           actor_name: admin.name || admin.email,
-          details: { target_email: normalizedEmail, old: oldRole, new: newRole },
+          details: {
+            target_email: normalizedEmail,
+            changes: { role: { old: oldRole, new: newRole } },
+          },
         });
       }
 
@@ -89,12 +97,16 @@ module.exports = async function handler(req, res) {
     await sql`DELETE FROM dashboard_users WHERE LOWER(email) = ${target}`;
 
     if (existing.length > 0) {
+      const priorRole = existing[0].role || "";
       logUserActivity(sql, {
         uid: target,
         action: "user_removed",
         actor_email: admin.email,
         actor_name: admin.name || admin.email,
-        details: { target_email: target, prior_role: existing[0].role || "" },
+        details: {
+          target_email: target,
+          changes: { role: { old: priorRole, new: null } },
+        },
       });
     }
     return res.status(200).json({ success: true });

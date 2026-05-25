@@ -1,6 +1,12 @@
 const { getDB } = require("../_db");
 const { requireAdmin, nameFromEmail } = require("../_auth");
 
+function logUserActivity(sql, { uid, action, actor_email, actor_name, details }) {
+  sql`INSERT INTO activity_logs (uid, action, category, actor_email, actor_name, details, dashboard)
+      VALUES (${uid}, ${action}, ${"admin"}, ${actor_email || ""}, ${actor_name || ""}, ${JSON.stringify(details)}, ${"Supply Dashboard"})
+  `.catch(err => console.error("Activity log failed:", err.message));
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, PATCH, OPTIONS");
@@ -36,13 +42,26 @@ module.exports = async function handler(req, res) {
       // Derived name from the email local-part drives visibility matching;
       // fall back to the Google profile name only if derivation yields nothing.
       const storedName = nameFromEmail(email) || name || "";
+      const normalizedEmail = (email || "").toLowerCase();
 
-      // Add to users
-      await sql`
+      // Add to users. RETURNING tells us whether the row was actually inserted
+      // (vs. ON CONFLICT skipping it) so we only log genuine additions.
+      const inserted = await sql`
         INSERT INTO dashboard_users (email, name, role, added_by)
         VALUES (${email}, ${storedName}, 'viewer', ${admin.email})
         ON CONFLICT (email) DO NOTHING
+        RETURNING email
       `;
+
+      if (inserted.length > 0) {
+        logUserActivity(sql, {
+          uid: normalizedEmail,
+          action: "user_added",
+          actor_email: admin.email,
+          actor_name: admin.name || admin.email,
+          details: { target_email: normalizedEmail, target_name: storedName, role: "viewer", source: "access_request_approved" },
+        });
+      }
 
       // Mark approved
       await sql`
