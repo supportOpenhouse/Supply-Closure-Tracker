@@ -131,10 +131,10 @@ module.exports = async function handler(req, res) {
 
   try {
     // ── 1. Fetch all properties (live + legacy edits merged manually for legacy if needed) ──
-    // For cron purposes, we only need live properties with assigned_by + followup_dates + closure_team_comments_at
+    // For cron purposes, we only need live properties with assigned_by + followup_dates + poc_comments_at
     // Legacy followup edits live in legacy_edits table — fetch those separately
     const liveRows = await sql`
-      SELECT uid, assigned_by, followup_dates, closure_team_comments_at
+      SELECT uid, assigned_by, followup_dates, poc_comments_at
       FROM properties
       WHERE assigned_by IS NOT NULL AND assigned_by != ''
     `;
@@ -142,7 +142,7 @@ module.exports = async function handler(req, res) {
     const legacyEdits = await sql`
       SELECT uid, field, value, updated_at
       FROM legacy_edits
-      WHERE field IN ('followup_dates', 'closure_team_comments', 'assigned_by')
+      WHERE field IN ('followup_dates', 'poc_comments', 'assigned_by')
     `;
 
     // Build legacy property objects from edits
@@ -154,8 +154,8 @@ module.exports = async function handler(req, res) {
       if (row.field === "followup_dates") {
         try { legacyMap[row.uid].followup_dates = JSON.parse(row.value); } catch { legacyMap[row.uid].followup_dates = []; }
       }
-      if (row.field === "closure_team_comments") {
-        legacyMap[row.uid].closure_team_comments_at = row.updated_at;
+      if (row.field === "poc_comments") {
+        legacyMap[row.uid].poc_comments_at = row.updated_at;
       }
     });
     const legacyRows = Object.values(legacyMap).filter(r => r.assigned_by);
@@ -174,7 +174,7 @@ module.exports = async function handler(req, res) {
       const latestIST = istDateStr(latest);
       const todayIST = istDateStr(new Date().toISOString());
       if (!latestIST || latestIST > todayIST) return false; // future follow-up
-      const closureIST = istDateStr(p.closure_team_comments_at);
+      const closureIST = istDateStr(p.poc_comments_at);
       if (closureIST && closureIST >= latestIST) return false; // closure caught up
       return true;
     });

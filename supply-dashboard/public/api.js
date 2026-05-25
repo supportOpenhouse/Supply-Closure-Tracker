@@ -43,10 +43,10 @@ function downloadCSV() {
     {hdr:"POC",key:"assignedBy"},{hdr:"Offer Price",key:"offerPrice"},{hdr:"Brokerage",key:"supplyDashBrokerage"},
     {hdr:"Key Handover Date",key:"keysHandoverDate"},
     {hdr:"Internal Remarks",key:"tokenRemarks"},
-    {hdr:"Closure Team Comments",key:"closureTeamComments"},
+    {hdr:"POC Comments",key:"pocComments"},
+    {hdr:"Manager Comments",key:"managerComments"},
     {hdr:"Rahool Comments",key:"rahoolComments"},
-    {hdr:"Prashant Comments",key:"prashantComments"},
-    {hdr:"Demand Team Comments",key:"demandTeamComments"}
+    {hdr:"Prashant Comments",key:"prashantComments"}
   ];
 
   function csvVal(v) {

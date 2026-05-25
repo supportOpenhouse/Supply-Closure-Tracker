@@ -150,9 +150,9 @@ function _render() {
   h += '<div id="tableWrap" style="flex:1;overflow:auto"><table><thead><tr>';
   var isDemand = currentUser && currentUser.role === 'demand';
   var isAdmin = currentUser && currentUser.role === 'admin';
-  var DEMAND_HIDE = ["Ask (in Lakhs)","Name","Phone","Followup Date","Offer Price","Brokerage","Internal Remarks","Closure Team Comments","Rahool Comments","Prashant Comments"];
+  var DEMAND_HIDE = ["Ask (in Lakhs)","Name","Phone","Followup Date","Offer Price","Brokerage","Internal Remarks","POC Comments","Manager Comments","Rahool Comments","Prashant Comments"];
   var COLS = [
-    {hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"ID / Lead ID",key:"uid"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Followup Date",key:null},{hdr:"Offer Price",key:null},{hdr:"Brokerage",key:"supplyDashBrokerage"},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"Internal Remarks",key:null},{hdr:"Closure Team Comments",key:null},{hdr:"Rahool Comments",key:null},{hdr:"Prashant Comments",key:null},{hdr:"Demand Team Comments",key:null}
+    {hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"ID / Lead ID",key:"uid"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Followup Date",key:null},{hdr:"Offer Price",key:null},{hdr:"Brokerage",key:"supplyDashBrokerage"},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"Internal Remarks",key:null},{hdr:"POC Comments",key:null},{hdr:"Manager Comments",key:null},{hdr:"Rahool Comments",key:null},{hdr:"Prashant Comments",key:null}
   ];
   if (isDemand) COLS = COLS.filter(function(c){ return DEMAND_HIDE.indexOf(c.hdr) === -1; });
   // Admin-only Priority column (first)
@@ -268,12 +268,12 @@ function _render() {
 
     // Comments
     var commentFields = [
-      {key:"closureTeamComments", db:"closure_team_comments", tsKey:"closureTeamCommentsAt"},
+      {key:"pocComments", db:"poc_comments", tsKey:"pocCommentsAt"},
+      {key:"managerComments", db:"manager_comments", tsKey:"managerCommentsAt"},
       {key:"rahoolComments", db:"rahool_comments", tsKey:"rahoolCommentsAt"},
-      {key:"prashantComments", db:"prashant_comments", tsKey:"prashantCommentsAt"},
-      {key:"demandTeamComments", db:"demand_team_comments", tsKey:"demandTeamCommentsAt"}
+      {key:"prashantComments", db:"prashant_comments", tsKey:"prashantCommentsAt"}
     ];
-    if (isDemand) commentFields = commentFields.filter(function(cf){ return cf.key === "demandTeamComments"; });
+    if (isDemand) commentFields = [];
     commentFields.forEach(cf => {
       const dotKey = p.uid + "_" + cf.db;
       const ts = timeAgo(p[cf.tsKey]);

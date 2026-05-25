@@ -23,13 +23,17 @@ async function getLegacyData() {
     if (!res.ok) throw new Error("Sheet fetch failed: " + res.status);
     const rows = await res.json();
 
-    // Normalize: ensure arrays and boolean fields
+    // Normalize: ensure arrays and boolean fields. Also alias the renamed
+    // comment keys so legacy rows still emitted under the old names surface
+    // under the new ones the dashboard reads.
     const normalized = rows.map(r => ({
       ...r,
       isLegacy: true,
       balconyDetails: parseJson(r.balconyDetails),
       documentsAvailable: parseJson(r.documentsAvailable),
       furnishingDetails: parseJson(r.furnishingDetails),
+      pocComments: r.pocComments || r.closureTeamComments || "",
+      managerComments: r.managerComments || r.demandTeamComments || "",
     }));
 
     legacyCache = { data: normalized, fetchedAt: now };
@@ -71,10 +75,10 @@ module.exports = async function handler(req, res) {
         deal_token_amount, remaining_amount,
         balcony_details, additional_images,
         exit_compass_image, documents_available,
-        status_override, offer_price, supply_dash_brokerage, closure_team_comments, rahool_comments,
-        prashant_comments, demand_team_comments,
-        closure_team_comments_at, rahool_comments_at,
-        prashant_comments_at, demand_team_comments_at,
+        status_override, offer_price, supply_dash_brokerage, poc_comments, rahool_comments,
+        prashant_comments, manager_comments,
+        poc_comments_at, rahool_comments_at,
+        prashant_comments_at, manager_comments_at,
         key_handover_date, token_remarks, is_token_refunded, followup_dates, is_high_priority
       FROM properties
       WHERE (is_dead IS NULL OR is_dead = false)
@@ -97,10 +101,10 @@ module.exports = async function handler(req, res) {
         "status_override": "statusOverride",
         "offer_price": "offerPrice",
         "supply_dash_brokerage": "supplyDashBrokerage",
-        "closure_team_comments": "closureTeamComments",
+        "poc_comments": "pocComments",
         "rahool_comments": "rahoolComments",
         "prashant_comments": "prashantComments",
-        "demand_team_comments": "demandTeamComments",
+        "manager_comments": "managerComments",
         // Property fields (from edit modal)
         "society_name": "society",
         "locality": "locality",
@@ -135,10 +139,10 @@ module.exports = async function handler(req, res) {
         "is_high_priority": "isHighPriority",
       };
       const COMMENT_TS_MAP = {
-        "closure_team_comments": "closureTeamCommentsAt",
+        "poc_comments": "pocCommentsAt",
         "rahool_comments": "rahoolCommentsAt",
         "prashant_comments": "prashantCommentsAt",
-        "demand_team_comments": "demandTeamCommentsAt",
+        "manager_comments": "managerCommentsAt",
       };
       legacyWithEdits.forEach(p => {
         const saved = editMap[p.uid];
@@ -295,14 +299,14 @@ function transformRow(r) {
     statusOverride: r.status_override || "",
     offerPrice: r.offer_price || "",
     supplyDashBrokerage: r.supply_dash_brokerage || "",
-    closureTeamComments: r.closure_team_comments || "",
+    pocComments: r.poc_comments || "",
     rahoolComments: r.rahool_comments || "",
     prashantComments: r.prashant_comments || "",
-    demandTeamComments: r.demand_team_comments || "",
-    closureTeamCommentsAt: r.closure_team_comments_at || "",
+    managerComments: r.manager_comments || "",
+    pocCommentsAt: r.poc_comments_at || "",
     rahoolCommentsAt: r.rahool_comments_at || "",
     prashantCommentsAt: r.prashant_comments_at || "",
-    demandTeamCommentsAt: r.demand_team_comments_at || "",
+    managerCommentsAt: r.manager_comments_at || "",
     keysHandoverDate: r.key_handover_date || "",
     tokenRemarks: r.token_remarks || "",
     isTokenRefunded: r.is_token_refunded || false,

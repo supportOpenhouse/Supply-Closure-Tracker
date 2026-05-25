@@ -152,10 +152,10 @@ function transformRow(r, index, defaultCity) {
     // Status from the sheet directly
     statusOverride: normalizeStatus(r["Status"]),
     offerPrice: r["Offer Price"] || "",
-    closureTeamComments: r["Closure Team  Comments"] || r["Closure Team Comments"] || "",
+    pocComments: r["Closure Team  Comments"] || r["Closure Team Comments"] || "",
     rahoolComments: r["Rahool Comments"] || "",
     prashantComments: r["Prashant Comments"] || "",
-    demandTeamComments: r["Demand Team Comment"] || r["Demand Team Comments"] || "",
+    managerComments: r["Demand Team Comment"] || r["Demand Team Comments"] || "",
     // Extra fields from old sheet
     balconyView: r["Balcony View"] || "",
     priority: r["Priority"] || "",

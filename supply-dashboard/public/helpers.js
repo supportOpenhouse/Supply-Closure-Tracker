@@ -143,7 +143,7 @@ function isFollowupPending(p) {
   const todayIST = istDateStr(new Date().toISOString());
   const latestIST = istDateStr(latest);
   if (!latestIST || latestIST > todayIST) return false; // future follow-up
-  const closureIST = istDateStr(p.closureTeamCommentsAt);
+  const closureIST = istDateStr(p.pocCommentsAt);
   if (closureIST && closureIST >= latestIST) return false; // closure caught up
   return true;
 }

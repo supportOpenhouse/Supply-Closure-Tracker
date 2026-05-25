@@ -102,10 +102,10 @@ function downloadCSV() {
     {hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",fn:function(p){return getBalconyView(p)||p.balconyView||""}},
     {hdr:"POC",key:"assignedBy"},{hdr:"Offer Price",key:"offerPrice"},
     {hdr:"Key Handover Date",key:"keysHandoverDate"},
-    {hdr:"Closure Team Comments",key:"closureTeamComments"},
+    {hdr:"POC Comments",key:"pocComments"},
+    {hdr:"Manager Comments",key:"managerComments"},
     {hdr:"Rahool Comments",key:"rahoolComments"},
-    {hdr:"Prashant Comments",key:"prashantComments"},
-    {hdr:"Demand Team Comments",key:"demandTeamComments"}
+    {hdr:"Prashant Comments",key:"prashantComments"}
   ];
 
   function csvVal(v) {
@@ -439,7 +439,7 @@ function _render() {
   // Table
   h += '<div id="tableWrap" style="flex:1;overflow:auto"><table><thead><tr>';
   var COLS = [
-    {hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Offer Price",key:null},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"Closure Team Comments",key:null},{hdr:"Rahool Comments",key:null},{hdr:"Prashant Comments",key:null},{hdr:"Demand Team Comments",key:null}
+    {hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Offer Price",key:null},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"POC Comments",key:null},{hdr:"Manager Comments",key:null},{hdr:"Rahool Comments",key:null},{hdr:"Prashant Comments",key:null}
   ];
   COLS.forEach(function(col,i) {
     var sortable = col.key ? ' class="sortable" onclick="toggleSort(\''+col.key+'\')"' : '';
@@ -504,10 +504,10 @@ function _render() {
 
     // Comments
     const commentFields = [
-      {key:"closureTeamComments", db:"closure_team_comments", tsKey:"closureTeamCommentsAt"},
+      {key:"pocComments", db:"poc_comments", tsKey:"pocCommentsAt"},
+      {key:"managerComments", db:"manager_comments", tsKey:"managerCommentsAt"},
       {key:"rahoolComments", db:"rahool_comments", tsKey:"rahoolCommentsAt"},
-      {key:"prashantComments", db:"prashant_comments", tsKey:"prashantCommentsAt"},
-      {key:"demandTeamComments", db:"demand_team_comments", tsKey:"demandTeamCommentsAt"}
+      {key:"prashantComments", db:"prashant_comments", tsKey:"prashantCommentsAt"}
     ];
     commentFields.forEach(cf => {
       const dotKey = p.uid + "_" + cf.db;
@@ -1214,7 +1214,7 @@ function quickHash(data) {
   const sample = data.slice(0, 50); // only check first 50 rows
   for (let i = 0; i < sample.length; i++) {
     const d = sample[i];
-    h += (d.statusOverride||"") + (d.offerPrice||"") + (d.closureTeamComments||"").length + (d.rahoolComments||"").length + (d.prashantComments||"").length + (d.demandTeamComments||"").length + "|";
+    h += (d.statusOverride||"") + (d.offerPrice||"") + (d.pocComments||"").length + (d.rahoolComments||"").length + (d.prashantComments||"").length + (d.managerComments||"").length + "|";
   }
   return h;
 }

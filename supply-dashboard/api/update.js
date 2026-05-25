@@ -7,10 +7,10 @@ const COMMENT_FIELDS = [
   "offer_price",
   "supply_dash_brokerage",
   "followup_date",
-  "closure_team_comments",
+  "poc_comments",
   "rahool_comments",
   "prashant_comments",
-  "demand_team_comments"
+  "manager_comments"
 ];
 
 const ADMIN_FIELDS = ["assigned_by", "is_high_priority"];
@@ -57,8 +57,8 @@ module.exports = async function handler(req, res) {
       return res.status(403).json({ error: "Commenters can only edit comments, status, and offer price" });
     }
 
-    if (user.role === "demand" && field !== "demand_team_comments") {
-      return res.status(403).json({ error: "Demand team can only edit demand team comments" });
+    if (user.role === "demand" && field !== "manager_comments") {
+      return res.status(403).json({ error: "Demand team can only edit manager comments" });
     }
 
     if (!ALL_ALLOWED.includes(field)) {
@@ -136,10 +136,10 @@ module.exports = async function handler(req, res) {
     }
 
     const COMMENT_TS = {
-      "closure_team_comments": "closure_team_comments_at",
+      "poc_comments": "poc_comments_at",
       "rahool_comments": "rahool_comments_at",
       "prashant_comments": "prashant_comments_at",
-      "demand_team_comments": "demand_team_comments_at",
+      "manager_comments": "manager_comments_at",
     };
 
     const tsCol = COMMENT_TS[field];
