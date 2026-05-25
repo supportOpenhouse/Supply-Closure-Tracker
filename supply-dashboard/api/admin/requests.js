@@ -59,7 +59,12 @@ module.exports = async function handler(req, res) {
           action: "user_added",
           actor_email: admin.email,
           actor_name: admin.name || admin.email,
-          details: { target_email: normalizedEmail, target_name: storedName, role: "viewer", source: "access_request_approved" },
+          details: {
+            target_email: normalizedEmail,
+            target_name: storedName,
+            source: "access_request_approved",
+            changes: { role: { old: null, new: "viewer" } },
+          },
         });
       }
 
