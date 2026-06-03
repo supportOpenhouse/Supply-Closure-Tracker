@@ -63,7 +63,7 @@ let state = {
 const PAGE_SIZE = 50;
 
 function canEdit() {
-  return currentUser && (currentUser.role === "admin" || currentUser.role === "commenter" || currentUser.role === "demand");
+  return currentUser && (currentUser.role === "admin" || currentUser.role === "commenter" || currentUser.role === "manager");
 }
 
 // Debounce timers for auto-saving comments

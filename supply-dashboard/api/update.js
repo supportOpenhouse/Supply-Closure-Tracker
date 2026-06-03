@@ -14,6 +14,7 @@ const COMMENT_FIELDS = [
 ];
 
 const ADMIN_FIELDS = ["assigned_by", "is_high_priority"];
+const MANAGER_FIELDS = [...COMMENT_FIELDS, "assigned_by"];
 const ALL_ALLOWED = [...COMMENT_FIELDS, ...ADMIN_FIELDS];
 
 // Fields that get activity-logged
@@ -57,8 +58,8 @@ module.exports = async function handler(req, res) {
       return res.status(403).json({ error: "Commenters can only edit comments, status, and offer price" });
     }
 
-    if (user.role === "demand" && field !== "manager_comments") {
-      return res.status(403).json({ error: "Demand team can only edit manager comments" });
+    if (user.role === "manager" && !MANAGER_FIELDS.includes(field)) {
+      return res.status(403).json({ error: "Managers can edit comments, status, offer, and POC only" });
     }
 
     if (!ALL_ALLOWED.includes(field)) {

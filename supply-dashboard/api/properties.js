@@ -169,7 +169,7 @@ module.exports = async function handler(req, res) {
     const allProperties = [...liveProperties, ...legacyWithEdits];
 
     // Step 4: Visibility filter
-    if (user.role === "admin" || user.role === "demand" || user.role === "price_view") {
+    if (user.role === "admin") {
       return res.status(200).json(allProperties);
     }
 
@@ -196,7 +196,7 @@ module.exports = async function handler(req, res) {
     const ownNames = ownName ? [ownName.toLowerCase()] : [];
     const overrides = [];
     // "Test Sahaj" is a legacy POC label that belongs to Sahaj Dureja.
-    if ((user.role === "viewer" || user.role === "commenter") &&
+    if ((user.role === "viewer" || user.role === "commenter" || user.role === "manager") &&
         userEmail === "sahaj.dureja@openhouse.in") {
       overrides.push("test sahaj");
     }

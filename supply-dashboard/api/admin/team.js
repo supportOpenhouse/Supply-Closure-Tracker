@@ -13,7 +13,7 @@ module.exports = async function handler(req, res) {
 
   const user = await requireAuth(req, res);
   if (!user) return;
-  if (user.role !== "admin" && user.role !== "price_view") {
+  if (user.role !== "admin") {
     return res.status(403).json({ error: "Access denied" });
   }
 

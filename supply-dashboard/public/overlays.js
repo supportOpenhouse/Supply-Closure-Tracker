@@ -31,7 +31,7 @@ function renderOverlays() {
       h += '<div class="admin-section"><h3>Add User</h3>';
       h += '<div class="admin-add">';
       h += '<input id="addEmail" placeholder="email@openhouse.in">';
-      h += '<select id="addRole"><option value="viewer">Viewer</option><option value="commenter">Commenter</option><option value="demand">Demand Team</option><option value="price_view">Price View</option><option value="admin">Admin</option></select>';
+      h += '<select id="addRole"><option value="viewer">Viewer</option><option value="commenter">Commenter</option><option value="manager">Manager</option><option value="admin">Admin</option></select>';
       h += '<button onclick="addUser()">Add User</button>';
       h += '</div></div>';
 
@@ -52,13 +52,13 @@ function renderOverlays() {
       }
 
       h += '<div class="admin-section"><h3>Current Users ('+adminUsers.length+')</h3>';
-      h += '<div style="font-size:10px;color:#6b7280;margin-bottom:6px">Viewer = read only &middot; Commenter = comments, status, offer &middot; Demand = all properties, demand comments only &middot; Price View = read-only access to all properties &middot; Admin = full access</div>';
+      h += '<div style="font-size:10px;color:#6b7280;margin-bottom:6px">Viewer = read only &middot; Commenter = comments, status, offer &middot; Manager = commenter rights + change POC &middot; Admin = full access</div>';
       h += '<div class="admin-list">';
       adminUsers.forEach(u => {
         h += '<div class="admin-row">';
         h += '<div style="flex:1"><span class="email">'+esc(u.email)+'</span></div>';
         h += '<select class="role-select" onchange="changeUserRole(\''+esc(u.email)+'\',this.value)">';
-        ["viewer","commenter","demand","price_view","admin"].forEach(r => {
+        ["viewer","commenter","manager","admin"].forEach(r => {
           h += '<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+r+'</option>';
         });
         h += '</select>';
@@ -84,7 +84,7 @@ function renderOverlays() {
 
     } else if (adminTab === 'team') {
       h += '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:#0369a1">';
-      h += '<b>How visibility works:</b> Each user sees records where their name appears in Assigned By, plus records of anyone in their <code>managed_team</code> (in the <code>users</code> table). Admins, Demand, and Price View see everything. This view is read-only — edit <code>managed_team</code> in the database.';
+      h += '<b>How visibility works:</b> Each user sees records where their name appears in Assigned By, plus records of anyone in their <code>managed_team</code> (in the <code>users</code> table). Admins see everything. This view is read-only — edit <code>managed_team</code> in the database.';
       h += '</div>';
 
       h += '<div class="admin-section"><h3>Team Directory</h3>';

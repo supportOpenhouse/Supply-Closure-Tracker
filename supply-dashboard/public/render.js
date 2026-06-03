@@ -148,13 +148,11 @@ function _render() {
 
   // Table
   h += '<div id="tableWrap" style="flex:1;overflow:auto"><table><thead><tr>';
-  var isDemand = currentUser && currentUser.role === 'demand';
   var isAdmin = currentUser && currentUser.role === 'admin';
-  var DEMAND_HIDE = ["Ask (in Lakhs)","Name","Phone","Followup Date","Offer Price","Brokerage","Internal Remarks","POC Comments","Manager Comments","Rahool Comments","Prashant Comments"];
+  var isManager = currentUser && currentUser.role === 'manager';
   var COLS = [
     {hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"ID / Lead ID",key:"uid"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Followup Date",key:null},{hdr:"Offer Price",key:null},{hdr:"Brokerage",key:"supplyDashBrokerage"},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"Internal Remarks",key:null},{hdr:"POC Comments",key:null},{hdr:"Manager Comments",key:null},{hdr:"Rahool Comments",key:null},{hdr:"Prashant Comments",key:null}
   ];
-  if (isDemand) COLS = COLS.filter(function(c){ return DEMAND_HIDE.indexOf(c.hdr) === -1; });
   // Admin-only Priority column (first)
   if (isAdmin) COLS.unshift({hdr:"\u2605", key:"isHighPriority"});
   var colCount = COLS.length;
@@ -190,16 +188,16 @@ function _render() {
     h += '<td>'+(p.towerNo||"\u2014")+'</td>';
     h += '<td class="unit-cell">'+(p.unitNo||"\u2014")+'</td>';
     h += '<td>'+(p.configuration||"\u2014")+'</td>';
-    if (!isDemand) h += '<td class="ask-cell">'+(p.demandPrice||"\u2014")+'</td>';
+    h += '<td class="ask-cell">'+(p.demandPrice||"\u2014")+'</td>';
     h += '<td>'+(p.areaSqft||"\u2014")+'</td>';
     h += '<td style="text-align:center">'+(p.floor||"\u2014")+'</td>';
     h += '<td>'+esc(p.source)+'</td>';
-    if (!isDemand) h += '<td>'+esc(p.ownerName)+'</td>';
-    if (!isDemand) h += '<td style="font-size:11px;white-space:nowrap">'+(p.contactNo||"\u2014")+'</td>';
+    h += '<td>'+esc(p.ownerName)+'</td>';
+    h += '<td style="font-size:11px;white-space:nowrap">'+(p.contactNo||"\u2014")+'</td>';
 
     // Status
     h += '<td onclick="event.stopPropagation()">';
-    if (canEdit() && !isDemand) {
+    if (canEdit()) {
       h += '<select class="status-select" style="background:'+sc.bg+';color:'+sc.text+'" onchange="changeStatus(\''+p.uid+'\',this.value)">';
       // If the current status is an auto-derived stage (not user-selectable),
       // still show it as the selected option so the displayed value is correct.
@@ -219,9 +217,7 @@ function _render() {
     h += '<td class="small-cell">'+esc(p.assignedBy||"\u2014")+'</td>';
 
     // Followup Date
-    if (isDemand) {
-      // hidden for demand
-    } else {
+    {
       var fDates = Array.isArray(p.followupDates) ? p.followupDates : [];
       var latestDate = fDates.length > 0 ? (fDates[fDates.length - 1].date || "") : "";
       var historyTitle = "";
@@ -243,18 +239,14 @@ function _render() {
     }
 
     // Offer
-    if (isDemand) {
-      // demand role: hide offer price column entirely
-    } else if (canEdit()) {
+    if (canEdit()) {
       h += '<td onclick="event.stopPropagation()"><input type="text" value="'+esc(p.offerPrice||'')+'" placeholder="\u2014" oninput="changeOffer(\''+p.uid+'\',this.value)" style="width:70px;padding:3px 6px;border:1px solid #e5e7eb;border-radius:4px;font-size:12px;font-weight:600;color:#047857;outline:none;font-family:inherit;text-align:right"><span id="dot_'+p.uid+'_offer_price" class="save-dot '+(saveStatus[p.uid+'_offer_price']||'')+'"></span></td>';
     } else {
       h += '<td style="font-weight:600;color:#047857">'+(p.offerPrice||"\u2014")+'</td>';
     }
 
     // Brokerage
-    if (isDemand) {
-      // hidden for demand
-    } else if (canEdit()) {
+    if (canEdit()) {
       h += '<td onclick="event.stopPropagation()"><input type="text" value="'+esc(p.supplyDashBrokerage||'')+'" placeholder="\u2014" oninput="changeBrokerage(\''+p.uid+'\',this.value)" style="width:70px;padding:3px 6px;border:1px solid #e5e7eb;border-radius:4px;font-size:12px;font-weight:600;color:#7c3aed;outline:none;font-family:inherit;text-align:right"><span id="dot_'+p.uid+'_supply_dash_brokerage" class="save-dot '+(saveStatus[p.uid+'_supply_dash_brokerage']||'')+'"></span></td>';
     } else {
       h += '<td style="font-weight:600;color:#7c3aed">'+(p.supplyDashBrokerage||"\u2014")+'</td>';
@@ -264,7 +256,7 @@ function _render() {
     h += '<td style="font-size:11px;white-space:nowrap">'+formatDateOnly(p.keysHandoverDate)+'</td>';
 
     // Internal Remarks
-    if (!isDemand) h += '<td style="font-size:11px;max-width:180px;white-space:normal;word-wrap:break-word;color:#6b7280">'+esc(p.tokenRemarks||"\u2014")+'</td>';
+    h += '<td style="font-size:11px;max-width:180px;white-space:normal;word-wrap:break-word;color:#6b7280">'+esc(p.tokenRemarks||"\u2014")+'</td>';
 
     // Comments
     var commentFields = [
@@ -273,7 +265,6 @@ function _render() {
       {key:"rahoolComments", db:"rahool_comments", tsKey:"rahoolCommentsAt"},
       {key:"prashantComments", db:"prashant_comments", tsKey:"prashantCommentsAt"}
     ];
-    if (isDemand) commentFields = [];
     commentFields.forEach(cf => {
       const dotKey = p.uid + "_" + cf.db;
       const ts = timeAgo(p[cf.tsKey]);
@@ -299,34 +290,32 @@ function _render() {
       h += '<tr class="expand-row"><td colspan="' + colCount + '"><div class="expand-content">';
       h += '<div class="detail-tags">';
       const rate = getRatePerSqft(p);
-      if (rate && !isDemand) h += '<span>Rate/sqft: <b>\u20B9'+rate+'</b></span>';
-      if (p.fieldExec && !isDemand) h += '<span>Field Exec: <b>'+esc(p.fieldExec)+'</b></span>';
-      if (!isDemand) h += '<span>Visit: <b style="color:'+(p.visitSubmittedAt?'#059669':'#9ca3af')+'">'+(p.visitSubmittedAt?'Yes':'No')+'</b></span>';
-      if (p.balconyDetails && p.balconyDetails.length > 0 && !isDemand) h += '<span>Photos: <b style="color:#2563eb">'+p.balconyDetails.length+'</b></span>';
+      if (rate) h += '<span>Rate/sqft: <b>\u20B9'+rate+'</b></span>';
+      if (p.fieldExec) h += '<span>Field Exec: <b>'+esc(p.fieldExec)+'</b></span>';
+      h += '<span>Visit: <b style="color:'+(p.visitSubmittedAt?'#059669':'#9ca3af')+'">'+(p.visitSubmittedAt?'Yes':'No')+'</b></span>';
+      if (p.balconyDetails && p.balconyDetails.length > 0) h += '<span>Photos: <b style="color:#2563eb">'+p.balconyDetails.length+'</b></span>';
       if (p.bathrooms) h += '<span>Toilets: <b>'+esc(p.bathrooms)+'</b></span>';
       if (p.balconies) h += '<span>Balconies: <b>'+esc(p.balconies)+'</b></span>';
       if (p.parking) h += '<span>Parking: <b>'+esc(p.parking)+'</b></span>';
       if (p.furnishing) h += '<span>Furnishing: <b>'+esc(p.furnishing)+'</b></span>';
       if (p.registryStatus) h += '<span>Registry: <b>'+esc(p.registryStatus)+'</b></span>';
       if (p.occupancyStatus) h += '<span>Occupancy: <b>'+esc(p.occupancyStatus)+'</b></span>';
-      if (!isDemand) {
-        if (p.guaranteedSalePrice) h += '<span>GSP: <b>\u20B9'+esc(p.guaranteedSalePrice)+'L</b></span>';
-        if (p.initialPeriod) h += '<span>Contract: <b>'+esc(p.initialPeriod)+'d</b></span>';
-        if (p.gracePeriod) h += '<span>Grace: <b>'+esc(p.gracePeriod)+'d</b></span>';
-      }
+      if (p.guaranteedSalePrice) h += '<span>GSP: <b>\u20B9'+esc(p.guaranteedSalePrice)+'L</b></span>';
+      if (p.initialPeriod) h += '<span>Contract: <b>'+esc(p.initialPeriod)+'d</b></span>';
+      if (p.gracePeriod) h += '<span>Grace: <b>'+esc(p.gracePeriod)+'d</b></span>';
       if (p.videoLink) h += '<a href="'+esc(p.videoLink)+'" target="_blank" style="color:#2563eb;text-decoration:none">\u25B6 Video/Photos</a>';
       h += '</div>';
 
-      // POC edit (admin = editable, price_view = read-only visible)
-      if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'price_view')) {
+      // POC edit (admin + manager)
+      if (isAdmin || isManager) {
         var pocNames = [...new Set(DATA.map(function(d){return d.assignedBy}).filter(Boolean))].sort();
         h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px" onclick="event.stopPropagation()">';
-        h += '<span style="font-size:12px;font-weight:600;color:#0369a1">'+(isAdmin?'Change POC:':'POC:')+'</span>';
-        h += '<select '+(isAdmin?'onchange="changePoc(\''+p.uid+'\',this.value)"':'disabled')+' style="padding:4px 8px;font-size:12px;border:1px solid #93c5fd;border-radius:4px;outline:none;'+(isAdmin?'':'background:#f3f4f6;cursor:not-allowed;color:#6b7280')+'">';
+        h += '<span style="font-size:12px;font-weight:600;color:#0369a1">Change POC:</span>';
+        h += '<select onchange="changePoc(\''+p.uid+'\',this.value)" style="padding:4px 8px;font-size:12px;border:1px solid #93c5fd;border-radius:4px;outline:none">';
         h += '<option value="">'+esc(p.assignedBy || "— Select —")+'</option>';
-        if (isAdmin) pocNames.forEach(function(n){ if(n!==p.assignedBy) h += '<option value="'+esc(n)+'">'+esc(n)+'</option>'; });
+        pocNames.forEach(function(n){ if(n!==p.assignedBy) h += '<option value="'+esc(n)+'">'+esc(n)+'</option>'; });
         h += '</select>';
-        if (isAdmin) h += '<span id="dot_'+p.uid+'_assigned_by" class="save-dot '+(saveStatus[p.uid+'_assigned_by']||'')+'"></span>';
+        h += '<span id="dot_'+p.uid+'_assigned_by" class="save-dot '+(saveStatus[p.uid+'_assigned_by']||'')+'"></span>';
         // Edit Property button (admin only) — opens form admin to edit any field
         if (isAdmin) {
           h += '<a href="https://ohsupplyforms.onrender.com/admin?uid='+encodeURIComponent(p.uid)+'" target="_blank" rel="noopener" style="padding:5px 12px;font-size:12px;font-weight:600;background:#0369a1;color:#fff;border-radius:4px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">&#9998; Edit Property</a>';
@@ -334,7 +323,7 @@ function _render() {
         h += '</div>';
       }
 
-      if (!isDemand && p.documentsAvailable && p.documentsAvailable.length > 0) {
+      if (p.documentsAvailable && p.documentsAvailable.length > 0) {
         h += '<div style="font-size:11px;color:#6b7280;margin-bottom:12px">Docs: '+p.documentsAvailable.map(function(d){return esc(d)}).join(' \u00B7 ')+'</div>';
       }
 
@@ -352,7 +341,7 @@ function _render() {
           h += '</div><div style="font-size:10px;color:#6b7280;margin-top:3px">'+esc(b.attached_to||"")+' \u00B7 '+esc(b.facing||"")+' \u00B7 '+esc(b.view||"")+'</div></div>';
         });
         h += '</div>';
-      } else if (!isDemand) {
+      } else {
         h += '<div style="font-size:11px;color:#9ca3af;font-style:italic">Visit not completed \u2014 no images available</div>';
       }
 
