@@ -75,7 +75,8 @@ module.exports = async function handler(req, res) {
         deal_token_amount, remaining_amount,
         balcony_details, additional_images,
         exit_compass_image, documents_available,
-        status_override, offer_price, supply_dash_brokerage, poc_comments, rahool_comments,
+        status_override, status_override_at,
+        offer_price, supply_dash_brokerage, poc_comments, rahool_comments,
         prashant_comments, manager_comments,
         poc_comments_at, rahool_comments_at,
         prashant_comments_at, manager_comments_at,
@@ -143,6 +144,7 @@ module.exports = async function handler(req, res) {
         "rahool_comments": "rahoolCommentsAt",
         "prashant_comments": "prashantCommentsAt",
         "manager_comments": "managerCommentsAt",
+        "status_override": "statusOverrideAt",
       };
       legacyWithEdits.forEach(p => {
         const saved = editMap[p.uid];
@@ -297,6 +299,7 @@ function transformRow(r) {
     exitCompassImage: r.exit_compass_image || "",
     documentsAvailable: parseJson(r.documents_available),
     statusOverride: r.status_override || "",
+    statusOverrideAt: r.status_override_at || "",
     offerPrice: r.offer_price || "",
     supplyDashBrokerage: r.supply_dash_brokerage || "",
     pocComments: r.poc_comments || "",

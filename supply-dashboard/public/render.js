@@ -210,6 +210,9 @@ function _render() {
     } else {
       h += '<span class="status-select" style="background:'+sc.bg+';color:'+sc.text+';display:inline-block;padding:3px 8px;border-radius:4px">'+esc(status)+'</span>';
     }
+    if (p.statusOverride && p.statusOverrideAt) {
+      h += '<div style="font-size:9px;color:#9ca3af;margin-top:2px">'+formatDateOnly(p.statusOverrideAt)+'</div>';
+    }
     h += '</td>';
 
     h += '<td>'+(p.exitFacing||"\u2014")+'</td>';
