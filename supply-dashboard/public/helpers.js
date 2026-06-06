@@ -52,6 +52,27 @@ function getStatus(p) {
   return manualRank >= autoRank ? manual : autoStage;
 }
 
+// Timestamp that drove the currently-displayed status.
+// For manual overrides → statusOverrideAt. For auto-derived stages → the
+// corresponding *_submitted_at column that triggered that stage.
+function getStatusTimestamp(p, displayStatus) {
+  if (displayStatus && p.statusOverride === displayStatus && p.statusOverrideAt) {
+    return p.statusOverrideAt;
+  }
+  switch (displayStatus) {
+    case 'Cancelled Post Token': return p.statusOverrideAt || '';
+    case 'Listed':               return p.listingSubmittedAt || '';
+    case 'Key Handover':         return p.finalSubmittedAt || '';
+    case 'AMA Signed':           return p.cpBillSubmittedAt || p.pendingRequestSubmittedAt || '';
+    case 'AMA Req':              return p.amaSubmittedAt || '';
+    case 'Token Transferred':    return p.tokenDealSubmittedAt || '';
+    case 'Token Requested':      return p.tokenSubmittedAt || '';
+    case 'Visit Completed':      return p.visitSubmittedAt || '';
+    case 'Visit Scheduled':      return p.scheduleSubmittedAt || '';
+    default:                     return p.statusOverrideAt || '';
+  }
+}
+
 function getBalconyView(p) {
   const bd = ensureArray(p.balconyDetails);
   if (bd.length === 0) return "";
