@@ -212,7 +212,7 @@ function _render() {
     }
     var statusTs = getStatusTimestamp(p, status);
     if (statusTs) {
-      h += '<div style="font-size:9px;color:#9ca3af;margin-top:-2px;line-height:1.1">'+formatDateOnly(statusTs)+'</div>';
+      h += '<div style="font-size:9px;color:#9ca3af;margin-top:-10px;line-height:1">'+formatDateOnly(statusTs)+'</div>';
     }
     h += '</td>';
 
