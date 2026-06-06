@@ -54,12 +54,16 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "uid and field are required" });
     }
 
+    if (field === "offer_price" && user.role !== "admin") {
+      return res.status(403).json({ error: "Only admins can edit offer price" });
+    }
+
     if (user.role === "commenter" && !COMMENT_FIELDS.includes(field)) {
-      return res.status(403).json({ error: "Commenters can only edit comments, status, and offer price" });
+      return res.status(403).json({ error: "Commenters can only edit comments and status" });
     }
 
     if (user.role === "manager" && !MANAGER_FIELDS.includes(field)) {
-      return res.status(403).json({ error: "Managers can edit comments, status, offer, and POC only" });
+      return res.status(403).json({ error: "Managers can edit comments, status, and POC only" });
     }
 
     if (!ALL_ALLOWED.includes(field)) {

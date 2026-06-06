@@ -492,8 +492,8 @@ function _render() {
     h += '<td class="balcony-cell">'+(getBalconyView(p)||p.balconyView||"\u2014")+'</td>';
     h += '<td class="small-cell">'+esc(p.assignedBy||"\u2014")+'</td>';
 
-    // Offer
-    if (canEdit()) {
+    // Offer (admin-only edit)
+    if (currentUser && currentUser.role === "admin") {
       h += '<td onclick="event.stopPropagation()"><input type="text" value="'+esc(p.offerPrice||'')+'" placeholder="\u2014" oninput="changeOffer(\''+p.uid+'\',this.value)" style="width:70px;padding:3px 6px;border:1px solid #e5e7eb;border-radius:4px;font-size:12px;font-weight:600;color:#047857;outline:none;font-family:inherit;text-align:right"><span id="dot_'+p.uid+'_offer_price" class="save-dot '+(saveStatus[p.uid+'_offer_price']||'')+'"></span></td>';
     } else {
       h += '<td style="font-weight:600;color:#047857">'+(p.offerPrice||"\u2014")+'</td>';
