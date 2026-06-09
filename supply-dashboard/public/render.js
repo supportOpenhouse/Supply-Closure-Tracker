@@ -324,6 +324,11 @@ function _render() {
         if (isAdmin) {
           h += '<a href="https://ohsupplyforms.onrender.com/admin?uid='+encodeURIComponent(p.uid)+'" target="_blank" rel="noopener" style="padding:5px 12px;font-size:12px;font-weight:600;background:#0369a1;color:#fff;border-radius:4px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">&#9998; Edit Property</a>';
         }
+        // Affordable flag (from master_societies join) — shown to the right of Edit Property
+        if (p.affordable !== undefined) {
+          var aff = p.affordable === true;
+          h += '<span style="margin-left:auto;font-size:12px;font-weight:600;color:#374151">Affordable: <b style="color:'+(aff?'#059669':'#dc2626')+'">'+(aff?'Yes':'No')+'</b></span>';
+        }
         h += '</div>';
       }
 

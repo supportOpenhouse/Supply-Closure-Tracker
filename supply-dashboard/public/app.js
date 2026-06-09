@@ -41,6 +41,7 @@ let state = {
   statusFilter: [],
   pocFilter: [],
   sourceFilter: "All",
+  affordableFilter: "All",
   expandedId: null,
   modalImg: null,
   page: 1,
@@ -297,6 +298,10 @@ function getFiltered() {
       if (state.sourceFilter === "CP" && src !== "cp") return false;
       if (state.sourceFilter === "Direct" && src === "cp") return false;
     }
+    if (state.affordableFilter !== "All") {
+      if (state.affordableFilter === "Yes" && p.affordable !== true) return false;
+      if (state.affordableFilter === "No" && p.affordable !== false) return false;
+    }
     if (state.search) {
       const s = state.search.toLowerCase();
       return [p.uid,p.society,p.city,p.ownerName,p.towerNo,p.unitNo,p.fieldExec,p.locality,p.contactNo].some(v => (v||"").toLowerCase().includes(s));
@@ -422,6 +427,7 @@ function _render() {
   }
   h += '</div>';
   h += '<select onchange="updateFilter(\'sourceFilter\',this.value)"><option value="All">All Sources</option><option value="CP"'+(state.sourceFilter==="CP"?' selected':'')+'>CP</option><option value="Direct"'+(state.sourceFilter==="Direct"?' selected':'')+'>Direct</option></select>';
+  h += '<select onchange="updateFilter(\'affordableFilter\',this.value)"><option value="All">All Affordable</option><option value="Yes"'+(state.affordableFilter==="Yes"?' selected':'')+'>Affordable: Yes</option><option value="No"'+(state.affordableFilter==="No"?' selected':'')+'>Affordable: No</option></select>';
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   if (state.page > totalPages && totalPages > 0) state.page = totalPages;
   const pageStart = (state.page - 1) * PAGE_SIZE;

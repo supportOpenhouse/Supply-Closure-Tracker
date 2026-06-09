@@ -170,6 +170,24 @@ module.exports = async function handler(req, res) {
     // Step 3: Merge live + legacy
     const allProperties = [...liveProperties, ...legacyWithEdits];
 
+    // Step 3.5: Join with master_societies on society name to flag whether the
+    // society is "affordable". Unmatched societies default to false (No).
+    try {
+      const societyRows = await sql`SELECT society_name, affordable FROM master_societies`;
+      const affordableMap = new Map();
+      const normSociety = (s) => (s || "").toString().trim().toLowerCase().replace(/\s+/g, " ");
+      societyRows.forEach(s => {
+        const key = normSociety(s.society_name);
+        if (key) affordableMap.set(key, s.affordable === true);
+      });
+      allProperties.forEach(p => {
+        const key = normSociety(p.society);
+        p.affordable = (key && affordableMap.has(key)) ? affordableMap.get(key) : false;
+      });
+    } catch (err) {
+      console.error("master_societies join failed:", err.message);
+    }
+
     // Step 4: Visibility filter
     if (user.role === "admin") {
       return res.status(200).json(allProperties);
