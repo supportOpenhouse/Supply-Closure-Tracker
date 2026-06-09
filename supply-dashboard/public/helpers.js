@@ -208,6 +208,10 @@ function getFiltered() {
       if (state.sourceFilter === "CP" && src !== "cp") return false;
       if (state.sourceFilter === "Direct" && src === "cp") return false;
     }
+    if (state.affordableFilter !== "All") {
+      if (state.affordableFilter === "Yes" && p.affordable !== true) return false;
+      if (state.affordableFilter === "No" && p.affordable !== false) return false;
+    }
     // Followup Date filter (multi-select on latest followup date)
     if (state.followupDateFilter.length > 0) {
       const latest = getLatestFollowupDate(p);

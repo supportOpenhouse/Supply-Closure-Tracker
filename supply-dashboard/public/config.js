@@ -49,6 +49,7 @@ let state = {
   statusFilter: [],
   pocFilter: [],
   sourceFilter: "All",
+  affordableFilter: "All",
   dateFilter: "all", // all | yesterday | week | month | custom
   dateFrom: "",
   dateTo: "",

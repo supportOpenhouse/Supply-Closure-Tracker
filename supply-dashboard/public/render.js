@@ -111,6 +111,7 @@ function _render() {
   }
   h += '</div>';
   h += '<select onchange="updateFilter(\'sourceFilter\',this.value)"><option value="All">All Sources</option><option value="CP"'+(state.sourceFilter==="CP"?' selected':'')+'>CP</option><option value="Direct"'+(state.sourceFilter==="Direct"?' selected':'')+'>Direct</option></select>';
+  h += '<select onchange="updateFilter(\'affordableFilter\',this.value)"><option value="All">All Affordable</option><option value="Yes"'+(state.affordableFilter==="Yes"?' selected':'')+'>Affordable: Yes</option><option value="No"'+(state.affordableFilter==="No"?' selected':'')+'>Affordable: No</option></select>';
   // Followup Date multi-select
   h += '<div class="ms-wrap">';
   h += '<div class="ms-btn" onclick="event.stopPropagation();toggleMs(\'followup\')">';
