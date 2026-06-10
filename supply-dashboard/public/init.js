@@ -72,14 +72,9 @@ function quickHash(data) {
 }
 
 async function silentRefresh() {
-  // Don't refresh if user is actively typing
-  const active = document.activeElement;
-  if (active && (active.tagName === "TEXTAREA" || (active.tagName === "INPUT" && active.type === "text"))) return;
-
-  // Don't refresh if admin panel or bug form is open
+  // Belt-and-suspenders guards (also re-checked after the fetch below).
+  if (isUserTyping() || hasPendingEdits()) return;
   if (showAdminPanel || showBugForm) return;
-
-  // Don't refresh if tab is hidden
   if (document.hidden) return;
 
   try {
@@ -87,11 +82,32 @@ async function silentRefresh() {
     if (res.status === 401) { window.location.href = "/login.html"; return; }
     if (!res.ok) return;
     const newData = await res.json();
+
+    // Re-check after the async fetch — the user may have started typing
+    // or queued a save while the request was in flight.
+    if (isUserTyping() || hasPendingEdits()) return;
+
     newData.forEach(p => {
       p.balconyDetails = ensureArray(p.balconyDetails);
       p.documentsAvailable = ensureArray(p.documentsAvailable);
       p.furnishingDetails = ensureArray(p.furnishingDetails);
     });
+
+    // Preserve any field the user has edited locally but whose save
+    // has not yet succeeded — even if it has no in-flight request yet.
+    // Without this, a poll lands the stale server value into the DOM and
+    // the user's text disappears mid-typing (see save-dot stuck orange).
+    if (dirtyFields.size > 0) {
+      const byUid = {};
+      DATA.forEach(p => { byUid[p.uid] = p; });
+      newData.forEach(np => {
+        const op = byUid[np.uid];
+        if (!op) return;
+        for (const jsField of Object.values(DB_TO_JS_FIELD)) {
+          if (dirtyFields.has(np.uid + ":" + jsField)) np[jsField] = op[jsField];
+        }
+      });
+    }
 
     const newHash = quickHash(newData);
     if (newHash !== lastDataHash) {

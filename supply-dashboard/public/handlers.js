@@ -51,6 +51,7 @@ async function togglePriority(uid, event) {
   if (!prop) return;
   const newVal = !prop.isHighPriority;
   prop.isHighPriority = newVal; // optimistic
+  markFieldDirty(uid, "isHighPriority");
   render();
 
   try {
@@ -61,12 +62,16 @@ async function togglePriority(uid, event) {
     });
     if (!res.ok) {
       prop.isHighPriority = !newVal; // rollback
+      markFieldClean(uid, "is_high_priority");
       const err = await res.json().catch(() => ({}));
       alert("Failed: " + (err.error || res.status));
       render();
+    } else {
+      markFieldClean(uid, "is_high_priority");
     }
   } catch (e) {
     prop.isHighPriority = !newVal;
+    markFieldClean(uid, "is_high_priority");
     alert("Error: " + e.message);
     render();
   }
@@ -155,6 +160,7 @@ function closeModal() { state.modalImg = null; renderOverlays(); }
 function changeStatus(uid, newStatus) {
   const prop = DATA.find(p => p.uid === uid);
   if (prop) prop.statusOverride = newStatus;
+  markFieldDirty(uid, "statusOverride");
   render();
   saveField(uid, "status_override", newStatus);
 }
@@ -162,18 +168,21 @@ function changeStatus(uid, newStatus) {
 function changeComment(uid, dbField, jsField, value) {
   const prop = DATA.find(p => p.uid === uid);
   if (prop) prop[jsField] = value;
+  markFieldDirty(uid, jsField);
   debouncedSave(uid, dbField, value);
 }
 
 function changeOffer(uid, value) {
   const prop = DATA.find(p => p.uid === uid);
   if (prop) prop.offerPrice = value;
+  markFieldDirty(uid, "offerPrice");
   debouncedSave(uid, "offer_price", value);
 }
 
 function changeBrokerage(uid, value) {
   const prop = DATA.find(p => p.uid === uid);
   if (prop) prop.supplyDashBrokerage = value;
+  markFieldDirty(uid, "supplyDashBrokerage");
   debouncedSave(uid, "supply_dash_brokerage", value);
 }
 
@@ -192,6 +201,7 @@ function changeFollowupDate(uid, value) {
   } else {
     prop.followupDates.push(newEntry);
   }
+  markFieldDirty(uid, "followupDates");
 
   const key = uid + "_followup_date";
   saveStatus[key] = "saving";
@@ -205,6 +215,7 @@ async function changePoc(uid, value) {
   if (!value) return;
   const prop = DATA.find(p => p.uid === uid);
   if (prop) prop.assignedBy = value;
+  markFieldDirty(uid, "assignedBy");
 
   const key = uid + "_assigned_by";
   saveStatus[key] = "saving";
@@ -217,6 +228,7 @@ async function changePoc(uid, value) {
       body: JSON.stringify({ uid, field: "assigned_by", value })
     });
     if (res.ok) {
+      markFieldClean(uid, "assigned_by");
       saveStatus[key] = "saved";
       renderSaveDot(key);
       setTimeout(function(){ saveStatus[key] = ""; renderSaveDot(key); }, 2000);
