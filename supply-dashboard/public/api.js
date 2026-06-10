@@ -95,7 +95,6 @@ async function saveField(uid, dbField, value) {
       body: JSON.stringify({ uid, field: dbField, value })
     });
     if (!res.ok) throw new Error("Save failed");
-    markFieldClean(uid, dbField);
     saveStatus[key] = "saved";
     renderSaveDot(key);
     setTimeout(() => { saveStatus[key] = ""; renderSaveDot(key); }, 2000);
