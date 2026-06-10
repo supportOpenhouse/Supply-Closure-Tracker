@@ -71,3 +71,41 @@ function canEdit() {
 const saveTimers = {};
 const saveStatus = {}; // uid_field -> "saving"|"saved"|"error"
 
+// Fields the user has edited locally but whose save has not yet succeeded.
+// Used by silentRefresh() to preserve in-progress edits when polled data
+// from the server would otherwise clobber them.
+// Keys: `${uid}:${jsField}` (jsField = camelCase field on the DATA row).
+const dirtyFields = new Set();
+
+// Maps PATCH /api/update field names → camelCase field on a DATA row.
+const DB_TO_JS_FIELD = {
+  status_override: "statusOverride",
+  offer_price: "offerPrice",
+  supply_dash_brokerage: "supplyDashBrokerage",
+  poc_comments: "pocComments",
+  manager_comments: "managerComments",
+  rahool_comments: "rahoolComments",
+  prashant_comments: "prashantComments",
+  assigned_by: "assignedBy",
+  followup_date: "followupDates",
+  is_high_priority: "isHighPriority",
+};
+
+function markFieldDirty(uid, jsField) {
+  if (uid && jsField) dirtyFields.add(uid + ":" + jsField);
+}
+function markFieldClean(uid, dbField) {
+  const jsField = DB_TO_JS_FIELD[dbField];
+  if (uid && jsField) dirtyFields.delete(uid + ":" + jsField);
+}
+function hasPendingEdits() {
+  if (dirtyFields.size > 0) return true;
+  for (const k in saveTimers) { if (saveTimers[k]) return true; }
+  for (const k in saveStatus) { if (saveStatus[k] === "saving") return true; }
+  return false;
+}
+function isUserTyping() {
+  const a = document.activeElement;
+  return !!(a && (a.tagName === "TEXTAREA" || (a.tagName === "INPUT" && a.type === "text")));
+}
+
