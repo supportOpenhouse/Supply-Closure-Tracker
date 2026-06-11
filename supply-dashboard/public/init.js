@@ -127,3 +127,12 @@ init();
 document.addEventListener("click", function() {
   if (state.msOpen) { state.msOpen = null; render(); }
 });
+
+// Keyboard navigation for the image modal: ← / → step through the
+// current row's image strip, Esc closes.
+document.addEventListener("keydown", function(e) {
+  if (!state.modalImg) return;
+  if (e.key === "ArrowRight") { e.preventDefault(); modalStep(1); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); modalStep(-1); }
+  else if (e.key === "Escape") { e.preventDefault(); closeModal(); }
+});

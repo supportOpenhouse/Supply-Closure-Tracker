@@ -56,6 +56,8 @@ let state = {
   followupDateFilter: [], // multi-select: today, tomorrow, week, past_due, future, none
   expandedId: null,
   modalImg: null,
+  modalList: [],
+  modalIndex: 0,
   page: 1,
   sortCol: null,
   sortDir: "asc",

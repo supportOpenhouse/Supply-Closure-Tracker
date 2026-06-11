@@ -3,7 +3,12 @@ function renderOverlays() {
 
   // Modal
   if (state.modalImg) {
-    h += '<div class="modal-overlay" onclick="closeModal()"><img src="'+esc(state.modalImg)+'"></div>';
+    const n = (state.modalList && state.modalList.length) || 0;
+    let counter = "";
+    if (n > 1) {
+      counter = '<div style="position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font:11px/1.4 system-ui,sans-serif;padding:4px 10px;border-radius:12px;pointer-events:none">'+(state.modalIndex+1)+' / '+n+' · ← →</div>';
+    }
+    h += '<div class="modal-overlay" onclick="closeModal()"><img src="'+esc(state.modalImg)+'" onclick="event.stopPropagation()">'+counter+'</div>';
   }
 
   // Admin Panel

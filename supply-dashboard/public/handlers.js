@@ -154,8 +154,40 @@ function toggleExpand(uid) {
   state.expandedId = state.expandedId === uid ? null : uid;
   try { render(); } catch(e) { console.error("Render crash:", e); alert("Render error: " + e.message); }
 }
-function showModal(src) { state.modalImg = src; renderOverlays(); }
-function closeModal() { state.modalImg = null; renderOverlays(); }
+function showModal(target) {
+  // Accept either an <img> element (preferred, enables arrow navigation
+  // across siblings in the same .img-strip) or a plain URL string.
+  let url = "", list = [], idx = 0;
+  if (target && typeof target === "object" && target.tagName === "IMG") {
+    url = target.dataset.modal || target.src;
+    const strip = target.closest(".img-strip") || target.closest(".expand-content");
+    if (strip) {
+      const imgs = Array.from(strip.querySelectorAll("img[data-modal]"));
+      list = imgs.map(i => i.dataset.modal);
+      idx = imgs.indexOf(target);
+      if (idx < 0) idx = 0;
+    }
+  } else {
+    url = target;
+  }
+  state.modalImg = url;
+  state.modalList = list;
+  state.modalIndex = idx;
+  renderOverlays();
+}
+function closeModal() {
+  state.modalImg = null;
+  state.modalList = [];
+  state.modalIndex = 0;
+  renderOverlays();
+}
+function modalStep(dir) {
+  const list = state.modalList || [];
+  if (list.length < 2) return;
+  state.modalIndex = (state.modalIndex + dir + list.length) % list.length;
+  state.modalImg = list[state.modalIndex];
+  renderOverlays();
+}
 
 function changeStatus(uid, newStatus) {
   const prop = DATA.find(p => p.uid === uid);

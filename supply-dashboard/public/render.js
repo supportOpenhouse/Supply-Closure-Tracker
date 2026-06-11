@@ -341,13 +341,13 @@ function _render() {
         h += '<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px">Balcony Views & Compass</div>';
         h += '<div class="img-strip">';
         if (p.exitCompassImage) {
-          h += '<div style="min-width:100px;text-align:center"><img src="'+esc(p.exitCompassImage)+'" width="100" height="70" data-modal="'+esc(p.exitCompassImage)+'" onclick="event.stopPropagation();showModal(this.dataset.modal)"><div style="font-size:10px;color:#6b7280;margin-top:3px">Exit Compass</div></div>';
+          h += '<div style="min-width:100px;text-align:center"><img src="'+esc(p.exitCompassImage)+'" width="100" height="70" data-modal="'+esc(p.exitCompassImage)+'" onclick="event.stopPropagation();showModal(this)"><div style="font-size:10px;color:#6b7280;margin-top:3px">Exit Compass</div></div>';
         }
         p.balconyDetails.forEach(function(b) {
           if (!b || !b.view_image) return;
           h += '<div class="img-card"><div style="display:flex;gap:4px">';
-          h += '<img src="'+esc(b.view_image)+'" width="80" height="70" data-modal="'+esc(b.view_image)+'" onclick="event.stopPropagation();showModal(this.dataset.modal)">';
-          if (b.compass_image) h += '<img src="'+esc(b.compass_image)+'" width="50" height="70" data-modal="'+esc(b.compass_image)+'" onclick="event.stopPropagation();showModal(this.dataset.modal)">';
+          h += '<img src="'+esc(b.view_image)+'" width="80" height="70" data-modal="'+esc(b.view_image)+'" onclick="event.stopPropagation();showModal(this)">';
+          if (b.compass_image) h += '<img src="'+esc(b.compass_image)+'" width="50" height="70" data-modal="'+esc(b.compass_image)+'" onclick="event.stopPropagation();showModal(this)">';
           h += '</div><div style="font-size:10px;color:#6b7280;margin-top:3px">'+esc(b.attached_to||"")+' \u00B7 '+esc(b.facing||"")+' \u00B7 '+esc(b.view||"")+'</div></div>';
         });
         h += '</div>';
