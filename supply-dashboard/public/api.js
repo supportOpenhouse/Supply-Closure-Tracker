@@ -42,7 +42,7 @@ function downloadCSV() {
     {hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",fn:function(p){return getBalconyView(p)||p.balconyView||""}},
     {hdr:"POC",key:"assignedBy"},{hdr:"Offer Price",key:"offerPrice"},
     {hdr:"Property Score",key:"propertyScore"},{hdr:"Price Score",key:"priceScore"},
-    {hdr:"PS x PS",fn:function(p){return psMultiplier(p)}},
+    {hdr:"Deal Multiplier",fn:function(p){return psMultiplier(p)}},
     {hdr:"Brokerage",key:"supplyDashBrokerage"},
     {hdr:"Key Handover Date",key:"keysHandoverDate"},
     {hdr:"Internal Remarks",key:"tokenRemarks"},
