@@ -15,7 +15,10 @@ const COMMENT_FIELDS = [
 
 const ADMIN_FIELDS = ["assigned_by", "is_high_priority"];
 const MANAGER_FIELDS = [...COMMENT_FIELDS, "assigned_by"];
-const ALL_ALLOWED = [...COMMENT_FIELDS, ...ADMIN_FIELDS];
+// Editable only by rahool@openhouse.in, regardless of role.
+const RAHOOL_ONLY_FIELDS = ["property_score", "price_score"];
+const RAHOOL_EMAIL = "rahool@openhouse.in";
+const ALL_ALLOWED = [...COMMENT_FIELDS, ...ADMIN_FIELDS, ...RAHOOL_ONLY_FIELDS];
 
 // Fields that get activity-logged
 const LOGGED_FIELDS = {
@@ -54,16 +57,23 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "uid and field are required" });
     }
 
-    if (field === "offer_price" && user.role !== "admin") {
-      return res.status(403).json({ error: "Only admins can edit offer price" });
-    }
+    if (RAHOOL_ONLY_FIELDS.includes(field)) {
+      // Email-gated, bypasses role allow-lists below.
+      if ((user.email || "").toLowerCase() !== RAHOOL_EMAIL) {
+        return res.status(403).json({ error: "Only Rahool can edit Property Score / Price Score" });
+      }
+    } else {
+      if (field === "offer_price" && user.role !== "admin") {
+        return res.status(403).json({ error: "Only admins can edit offer price" });
+      }
 
-    if (user.role === "commenter" && !COMMENT_FIELDS.includes(field)) {
-      return res.status(403).json({ error: "Commenters can only edit comments and status" });
-    }
+      if (user.role === "commenter" && !COMMENT_FIELDS.includes(field)) {
+        return res.status(403).json({ error: "Commenters can only edit comments and status" });
+      }
 
-    if (user.role === "manager" && !MANAGER_FIELDS.includes(field)) {
-      return res.status(403).json({ error: "Managers can edit comments, status, and POC only" });
+      if (user.role === "manager" && !MANAGER_FIELDS.includes(field)) {
+        return res.status(403).json({ error: "Managers can edit comments, status, and POC only" });
+      }
     }
 
     if (!ALL_ALLOWED.includes(field)) {

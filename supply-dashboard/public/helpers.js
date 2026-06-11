@@ -115,6 +115,16 @@ function getRatePerSqft(p) {
   return Math.round(price / area).toLocaleString();
 }
 
+// Multiplier of Property Score × Price Score. Blank string until both
+// are numeric. Stored values are free-form text, hence parseFloat.
+function psMultiplier(p) {
+  const a = parseFloat(p && p.propertyScore);
+  const b = parseFloat(p && p.priceScore);
+  if (!isFinite(a) || !isFinite(b)) return "";
+  const r = a * b;
+  return Number.isInteger(r) ? String(r) : (Math.round(r * 100) / 100).toString();
+}
+
 function esc(s) { return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
 function formatDateOnly(val) {

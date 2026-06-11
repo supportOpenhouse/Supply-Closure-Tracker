@@ -66,7 +66,7 @@ function quickHash(data) {
   const sample = data.slice(0, 50); // only check first 50 rows
   for (let i = 0; i < sample.length; i++) {
     const d = sample[i];
-    h += (d.statusOverride||"") + (d.offerPrice||"") + (d.pocComments||"").length + (d.rahoolComments||"").length + (d.prashantComments||"").length + (d.managerComments||"").length + "|";
+    h += (d.statusOverride||"") + (d.offerPrice||"") + (d.propertyScore||"") + (d.priceScore||"") + (d.pocComments||"").length + (d.rahoolComments||"").length + (d.prashantComments||"").length + (d.managerComments||"").length + "|";
   }
   return h;
 }

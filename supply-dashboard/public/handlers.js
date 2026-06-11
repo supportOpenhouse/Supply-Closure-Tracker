@@ -218,6 +218,27 @@ function changeBrokerage(uid, value) {
   debouncedSave(uid, "supply_dash_brokerage", value);
 }
 
+function updatePsxPsCell(uid, prop) {
+  const el = document.getElementById("psxps_" + uid);
+  if (el) el.textContent = psMultiplier(prop) || "—";
+}
+
+function changePropertyScore(uid, value) {
+  const prop = DATA.find(p => p.uid === uid);
+  if (prop) prop.propertyScore = value;
+  markFieldDirty(uid, "propertyScore");
+  updatePsxPsCell(uid, prop);
+  debouncedSave(uid, "property_score", value);
+}
+
+function changePriceScore(uid, value) {
+  const prop = DATA.find(p => p.uid === uid);
+  if (prop) prop.priceScore = value;
+  markFieldDirty(uid, "priceScore");
+  updatePsxPsCell(uid, prop);
+  debouncedSave(uid, "price_score", value);
+}
+
 // Followup Date uses 8s debounce so mis-clicks within 8s only save the final value
 function changeFollowupDate(uid, value) {
   const prop = DATA.find(p => p.uid === uid);

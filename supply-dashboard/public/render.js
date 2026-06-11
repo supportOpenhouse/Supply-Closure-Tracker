@@ -152,7 +152,7 @@ function _render() {
   var isAdmin = currentUser && currentUser.role === 'admin';
   var isManager = currentUser && currentUser.role === 'manager';
   var COLS = [
-    {hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"ID / Lead ID",key:"uid"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Followup Date",key:null},{hdr:"Offer Price",key:null},{hdr:"Brokerage",key:"supplyDashBrokerage"},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"Internal Remarks",key:null},{hdr:"POC Comments",key:null},{hdr:"Manager Comments",key:null},{hdr:"Rahool Comments",key:null},{hdr:"Prashant Comments",key:null}
+    {hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"ID / Lead ID",key:"uid"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Followup Date",key:null},{hdr:"Offer Price",key:null},{hdr:"Property Score",key:null},{hdr:"Price Score",key:null},{hdr:"PS x PS",key:null},{hdr:"Brokerage",key:"supplyDashBrokerage"},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"Internal Remarks",key:null},{hdr:"POC Comments",key:null},{hdr:"Manager Comments",key:null},{hdr:"Rahool Comments",key:null},{hdr:"Prashant Comments",key:null}
   ];
   // Admin-only Priority column (first)
   if (isAdmin) COLS.unshift({hdr:"\u2605", key:"isHighPriority"});
@@ -249,6 +249,18 @@ function _render() {
     } else {
       h += '<td style="font-weight:600;color:#047857">'+(p.offerPrice||"\u2014")+'</td>';
     }
+
+    // Property Score / Price Score \u2014 Rahool-only edit
+    var isRahool = currentUser && (currentUser.email||"").toLowerCase() === "rahool@openhouse.in";
+    if (isRahool) {
+      h += '<td onclick="event.stopPropagation()"><input type="text" value="'+esc(p.propertyScore||'')+'" placeholder="\u2014" oninput="changePropertyScore(\''+p.uid+'\',this.value)" style="width:60px;padding:3px 6px;border:1px solid #e5e7eb;border-radius:4px;font-size:12px;font-weight:600;color:#0369a1;outline:none;font-family:inherit;text-align:right"><span id="dot_'+p.uid+'_property_score" class="save-dot '+(saveStatus[p.uid+'_property_score']||'')+'"></span></td>';
+      h += '<td onclick="event.stopPropagation()"><input type="text" value="'+esc(p.priceScore||'')+'" placeholder="\u2014" oninput="changePriceScore(\''+p.uid+'\',this.value)" style="width:60px;padding:3px 6px;border:1px solid #e5e7eb;border-radius:4px;font-size:12px;font-weight:600;color:#0369a1;outline:none;font-family:inherit;text-align:right"><span id="dot_'+p.uid+'_price_score" class="save-dot '+(saveStatus[p.uid+'_price_score']||'')+'"></span></td>';
+    } else {
+      h += '<td style="font-weight:600;color:#0369a1">'+(p.propertyScore||"\u2014")+'</td>';
+      h += '<td style="font-weight:600;color:#0369a1">'+(p.priceScore||"\u2014")+'</td>';
+    }
+    // PS x PS \u2014 blank until both scores are numeric
+    h += '<td id="psxps_'+esc(p.uid)+'" style="font-weight:600;color:#0c4a6e">'+(psMultiplier(p)||"\u2014")+'</td>';
 
     // Brokerage
     if (canEdit()) {

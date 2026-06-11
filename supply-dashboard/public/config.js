@@ -83,6 +83,8 @@ const dirtyFields = new Set();
 const DB_TO_JS_FIELD = {
   status_override: "statusOverride",
   offer_price: "offerPrice",
+  property_score: "propertyScore",
+  price_score: "priceScore",
   supply_dash_brokerage: "supplyDashBrokerage",
   poc_comments: "pocComments",
   manager_comments: "managerComments",
