@@ -184,13 +184,17 @@ function visitHistoryCell(p) {
     return '<span style="color:#9ca3af">—</span>';
   }
 
-  // Current effective visit date: latest reschedule's new_date, else original.
+  // Actual final visit date: latest reschedule's new_date, else the original.
   var current = reschedules.length > 0 ? (reschedules[reschedules.length - 1].new_date || scheduled) : scheduled;
+  // When the visit was first scheduled — the properties.schedule_submitted_at
+  // column (TIMESTAMPTZ), exposed on the property as scheduleSubmittedAt.
+  var scheduledAt = p.scheduleSubmittedAt || "";
 
   // ── Build chronological event list for the thread ──
   var events = [];
-  if (scheduled) {
-    events.push({ color:"#3b82f6", label:"Scheduled", when:"", detail:'<b style="color:#111827">' + esc(formatDateOnly(scheduled)) + '</b>' });
+  if (scheduled || scheduledAt) {
+    events.push({ color:"#3b82f6", label:"Scheduled", when: scheduledAt ? esc(formatDateTime(scheduledAt)) : "",
+      detail: scheduled ? '<b style="color:#111827">' + esc(formatDateOnly(scheduled)) + '</b>' : "" });
   }
   reschedules.forEach(function(r){
     var when = r.on ? esc(formatDateTime(r.on)) : "";
@@ -209,7 +213,7 @@ function visitHistoryCell(p) {
   // ── Header: current state, clearly labelled ──
   var html = '<div style="min-width:190px;font-size:11px;color:#374151">';
   html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
-  html += '<span style="font-size:9.5px;text-transform:uppercase;letter-spacing:0.3px;color:#9ca3af">Visit date</span>';
+  html += '<span style="font-size:9.5px;text-transform:uppercase;letter-spacing:0.3px;color:#9ca3af">Final visit date</span>';
   if (cancelledOn) {
     if (current) html += '<span style="font-weight:600;color:#9ca3af;text-decoration:line-through">' + esc(formatDateOnly(current)) + '</span>';
     html += '<span style="padding:1px 7px;background:#fee2e2;color:#b91c1c;border-radius:3px;font-size:10px;font-weight:700">✕ CANCELLED</span>';
