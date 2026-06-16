@@ -157,6 +157,57 @@ function getLatestFollowupDate(p) {
   return arr[arr.length - 1].date || "";
 }
 
+// Builds the "Visit Schedule History" cell HTML from p.visitDateHistory:
+//   { scheduled_date, reschedules:[{on, old_date, new_date}], cancelled_on }
+// Shows the current effective date, a reschedule-count chip, and a cancelled
+// badge, with the full chronological timeline available on hover (title attr).
+function visitHistoryCell(p) {
+  var vh = p.visitDateHistory;
+  if (!vh || typeof vh !== "object") return '<span style="color:#9ca3af">—</span>';
+
+  var scheduled = vh.scheduled_date || "";
+  var reschedules = Array.isArray(vh.reschedules)
+    ? vh.reschedules.filter(function(r){ return r && (r.new_date || r.old_date); })
+    : [];
+  var cancelledOn = vh.cancelled_on || "";
+
+  if (!scheduled && reschedules.length === 0 && !cancelledOn) {
+    return '<span style="color:#9ca3af">—</span>';
+  }
+
+  // Reschedules that actually moved the date (old != new).
+  var changes = reschedules.filter(function(r){ return r.old_date && r.new_date && r.old_date !== r.new_date; });
+  // Current effective date: latest reschedule's new_date, else the original.
+  var current = reschedules.length > 0 ? (reschedules[reschedules.length - 1].new_date || scheduled) : scheduled;
+
+  // Full timeline for the hover tooltip.
+  var lines = [];
+  if (scheduled) lines.push("Scheduled for " + formatDateOnly(scheduled));
+  reschedules.forEach(function(r){
+    var on = r.on ? " (" + formatDateOnly(r.on) + ")" : "";
+    if (r.old_date && r.new_date && r.old_date !== r.new_date) {
+      lines.push(formatDateOnly(r.old_date) + " → " + formatDateOnly(r.new_date) + on);
+    } else {
+      lines.push("Reconfirmed " + formatDateOnly(r.new_date || r.old_date) + on);
+    }
+  });
+  if (cancelledOn) lines.push("Cancelled on " + formatDateOnly(cancelledOn));
+  var title = lines.join("\n");
+
+  var html = '<div style="font-size:11px;line-height:1.45;max-width:170px;white-space:normal" title="' + esc(title) + '">';
+  if (cancelledOn) {
+    if (current) html += '<div style="color:#9ca3af;text-decoration:line-through">' + esc(formatDateOnly(current)) + '</div>';
+    html += '<div style="margin-top:2px"><span style="display:inline-block;padding:1px 6px;background:#fee2e2;color:#b91c1c;border-radius:3px;font-size:10px;font-weight:600">✕ Cancelled ' + esc(formatDateOnly(cancelledOn)) + '</span></div>';
+  } else {
+    html += '<div style="font-weight:600;color:#374151">' + esc(formatDateOnly(current)) + '</div>';
+  }
+  if (changes.length > 0) {
+    html += '<div style="margin-top:2px"><span style="display:inline-block;padding:1px 6px;background:#fef3c7;color:#92400e;border-radius:3px;font-size:10px;font-weight:600">↻ ' + changes.length + ' reschedule' + (changes.length > 1 ? 's' : '') + '</span></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
 // Row is a pending follow-up (yellow) if the latest followup date is today
 // or older (IST) AND the closure team has not caught up — meaning either no
 // closure comment exists, or the last closure comment predates the follow-up.

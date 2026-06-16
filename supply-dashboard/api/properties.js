@@ -80,7 +80,8 @@ module.exports = async function handler(req, res) {
         prashant_comments, manager_comments,
         poc_comments_at, rahool_comments_at,
         prashant_comments_at, manager_comments_at,
-        key_handover_date, token_remarks, is_token_refunded, followup_dates, is_high_priority
+        key_handover_date, token_remarks, is_token_refunded, followup_dates, is_high_priority,
+        visit_date_history
       FROM properties
       WHERE (is_dead IS NULL OR is_dead = false)
       ORDER BY created_at DESC
@@ -262,6 +263,17 @@ function parseJson(val) {
   return [];
 }
 
+// Parse a JSONB object column. Neon usually returns it pre-parsed; fall back to
+// JSON.parse for string values. Returns null when absent/invalid.
+function parseJsonObject(val) {
+  if (!val) return null;
+  if (typeof val === "object") return val;
+  if (typeof val === "string") {
+    try { return JSON.parse(val); } catch { return null; }
+  }
+  return null;
+}
+
 function transformRow(r) {
   const ownerName =
     [r.first_name, r.last_name].filter(Boolean).join(" ") ||
@@ -337,5 +349,6 @@ function transformRow(r) {
     isTokenRefunded: r.is_token_refunded || false,
     isHighPriority: r.is_high_priority || false,
     followupDates: parseJson(r.followup_dates),
+    visitDateHistory: parseJsonObject(r.visit_date_history),
   };
 }

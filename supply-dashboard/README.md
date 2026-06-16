@@ -32,6 +32,7 @@ ALTER TABLE properties ADD COLUMN IF NOT EXISTS closure_team_comments TEXT DEFAU
 ALTER TABLE properties ADD COLUMN IF NOT EXISTS rahool_comments TEXT DEFAULT '';
 ALTER TABLE properties ADD COLUMN IF NOT EXISTS prashant_comments TEXT DEFAULT '';
 ALTER TABLE properties ADD COLUMN IF NOT EXISTS demand_team_comments TEXT DEFAULT '';
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS visit_date_history JSONB;
 ```
 
 Auth tables:
