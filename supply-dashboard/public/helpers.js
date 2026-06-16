@@ -134,12 +134,14 @@ function formatDateOnly(val) {
   return d.toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
 }
 
-// Date + time, e.g. "14 May 2026, 5:16 PM". Returns "" for empty input.
-function formatDateTime(val) {
+// Timestamp in ISO-style local format, e.g. "2026-05-14T17:16", so it reads
+// unambiguously as a timestamp (vs the human-formatted visit dates).
+function formatTimestamp(val) {
   if (!val) return "";
   var d = new Date(val);
   if (isNaN(d.getTime())) return esc(val);
-  return d.toLocaleString("en-IN", { day:"2-digit", month:"short", year:"numeric", hour:"numeric", minute:"2-digit", hour12:true });
+  var p2 = function(n){ return (n < 10 ? "0" : "") + n; };
+  return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) + "T" + p2(d.getHours()) + ":" + p2(d.getMinutes());
 }
 
 function timeAgo(ts) {
@@ -193,11 +195,10 @@ function visitHistoryCell(p) {
   // ── Build chronological event list for the thread ──
   var events = [];
   if (scheduled || scheduledAt) {
-    events.push({ color:"#3b82f6", label:"Scheduled", when: scheduledAt ? esc(formatDateTime(scheduledAt)) : "",
-      detail: scheduled ? '<b style="color:#111827">' + esc(formatDateOnly(scheduled)) + '</b>' : "" });
+    events.push({ color:"#3b82f6", label:"Scheduled", when: scheduledAt ? esc(formatTimestamp(scheduledAt)) : "", detail:"" });
   }
   reschedules.forEach(function(r){
-    var when = r.on ? esc(formatDateTime(r.on)) : "";
+    var when = r.on ? esc(formatTimestamp(r.on)) : "";
     if (r.old_date && r.new_date && r.old_date !== r.new_date) {
       events.push({ color:"#f59e0b", label:"Rescheduled", when:when,
         detail: esc(formatDateOnly(r.old_date)) + ' <span style="color:#9ca3af">→</span> <b style="color:#111827">' + esc(formatDateOnly(r.new_date)) + '</b>' });
@@ -207,13 +208,13 @@ function visitHistoryCell(p) {
     }
   });
   if (cancelledOn) {
-    events.push({ color:"#ef4444", label:"Cancelled", when: esc(formatDateTime(cancelledOn)), detail:"" });
+    events.push({ color:"#ef4444", label:"Cancelled", when: esc(formatTimestamp(cancelledOn)), detail:"" });
   }
 
   // ── Header: current state, clearly labelled ──
   var html = '<div style="min-width:190px;font-size:11px;color:#374151">';
   html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
-  html += '<span style="font-size:9.5px;text-transform:uppercase;letter-spacing:0.3px;color:#9ca3af">Final visit date</span>';
+  html += '<span style="font-size:9.5px;text-transform:uppercase;letter-spacing:0.3px;color:#9ca3af">Visit date</span>';
   if (cancelledOn) {
     if (current) html += '<span style="font-weight:600;color:#9ca3af;text-decoration:line-through">' + esc(formatDateOnly(current)) + '</span>';
     html += '<span style="padding:1px 7px;background:#fee2e2;color:#b91c1c;border-radius:3px;font-size:10px;font-weight:700">✕ CANCELLED</span>';
