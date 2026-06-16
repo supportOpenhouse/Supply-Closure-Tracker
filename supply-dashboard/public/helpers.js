@@ -134,6 +134,14 @@ function formatDateOnly(val) {
   return d.toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
 }
 
+// Date + time, e.g. "14 May 2026, 5:16 PM". Returns "" for empty input.
+function formatDateTime(val) {
+  if (!val) return "";
+  var d = new Date(val);
+  if (isNaN(d.getTime())) return esc(val);
+  return d.toLocaleString("en-IN", { day:"2-digit", month:"short", year:"numeric", hour:"numeric", minute:"2-digit", hour12:true });
+}
+
 function timeAgo(ts) {
   if (!ts) return "";
   const now = new Date();
@@ -159,15 +167,16 @@ function getLatestFollowupDate(p) {
 
 // Builds the "Visit Schedule History" cell HTML from p.visitDateHistory:
 //   { scheduled_date, reschedules:[{on, old_date, new_date}], cancelled_on }
-// Shows the current effective date, a reschedule-count chip, and a cancelled
-// badge, with the full chronological timeline available on hover (title attr).
+// Renders a clearly-labelled header (current visit date + state) followed by a
+// vertical timeline "thread": the original scheduled date, every reschedule
+// (with the action timestamp and old → new dates) and the cancellation.
 function visitHistoryCell(p) {
   var vh = p.visitDateHistory;
   if (!vh || typeof vh !== "object") return '<span style="color:#9ca3af">—</span>';
 
   var scheduled = vh.scheduled_date || "";
   var reschedules = Array.isArray(vh.reschedules)
-    ? vh.reschedules.filter(function(r){ return r && (r.new_date || r.old_date); })
+    ? vh.reschedules.filter(function(r){ return r && (r.new_date || r.old_date || r.on); })
     : [];
   var cancelledOn = vh.cancelled_on || "";
 
@@ -175,36 +184,52 @@ function visitHistoryCell(p) {
     return '<span style="color:#9ca3af">—</span>';
   }
 
-  // Reschedules that actually moved the date (old != new).
-  var changes = reschedules.filter(function(r){ return r.old_date && r.new_date && r.old_date !== r.new_date; });
-  // Current effective date: latest reschedule's new_date, else the original.
+  // Current effective visit date: latest reschedule's new_date, else original.
   var current = reschedules.length > 0 ? (reschedules[reschedules.length - 1].new_date || scheduled) : scheduled;
 
-  // Full timeline for the hover tooltip.
-  var lines = [];
-  if (scheduled) lines.push("Scheduled for " + formatDateOnly(scheduled));
+  // ── Build chronological event list for the thread ──
+  var events = [];
+  if (scheduled) {
+    events.push({ color:"#3b82f6", label:"Scheduled", when:"", detail:'<b style="color:#111827">' + esc(formatDateOnly(scheduled)) + '</b>' });
+  }
   reschedules.forEach(function(r){
-    var on = r.on ? " (" + formatDateOnly(r.on) + ")" : "";
+    var when = r.on ? esc(formatDateTime(r.on)) : "";
     if (r.old_date && r.new_date && r.old_date !== r.new_date) {
-      lines.push(formatDateOnly(r.old_date) + " → " + formatDateOnly(r.new_date) + on);
+      events.push({ color:"#f59e0b", label:"Rescheduled", when:when,
+        detail: esc(formatDateOnly(r.old_date)) + ' <span style="color:#9ca3af">→</span> <b style="color:#111827">' + esc(formatDateOnly(r.new_date)) + '</b>' });
     } else {
-      lines.push("Reconfirmed " + formatDateOnly(r.new_date || r.old_date) + on);
+      events.push({ color:"#cbd5e1", label:"Reconfirmed", when:when,
+        detail: esc(formatDateOnly(r.new_date || r.old_date)) + ' <span style="color:#9ca3af">(no change)</span>' });
     }
   });
-  if (cancelledOn) lines.push("Cancelled on " + formatDateOnly(cancelledOn));
-  var title = lines.join("\n");
-
-  var html = '<div style="font-size:11px;line-height:1.45;max-width:170px;white-space:normal" title="' + esc(title) + '">';
   if (cancelledOn) {
-    if (current) html += '<div style="color:#9ca3af;text-decoration:line-through">' + esc(formatDateOnly(current)) + '</div>';
-    html += '<div style="margin-top:2px"><span style="display:inline-block;padding:1px 6px;background:#fee2e2;color:#b91c1c;border-radius:3px;font-size:10px;font-weight:600">✕ Cancelled ' + esc(formatDateOnly(cancelledOn)) + '</span></div>';
-  } else {
-    html += '<div style="font-weight:600;color:#374151">' + esc(formatDateOnly(current)) + '</div>';
+    events.push({ color:"#ef4444", label:"Cancelled", when: esc(formatDateTime(cancelledOn)), detail:"" });
   }
-  if (changes.length > 0) {
-    html += '<div style="margin-top:2px"><span style="display:inline-block;padding:1px 6px;background:#fef3c7;color:#92400e;border-radius:3px;font-size:10px;font-weight:600">↻ ' + changes.length + ' reschedule' + (changes.length > 1 ? 's' : '') + '</span></div>';
+
+  // ── Header: current state, clearly labelled ──
+  var html = '<div style="min-width:190px;font-size:11px;color:#374151">';
+  html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
+  html += '<span style="font-size:9.5px;text-transform:uppercase;letter-spacing:0.3px;color:#9ca3af">Visit date</span>';
+  if (cancelledOn) {
+    if (current) html += '<span style="font-weight:600;color:#9ca3af;text-decoration:line-through">' + esc(formatDateOnly(current)) + '</span>';
+    html += '<span style="padding:1px 7px;background:#fee2e2;color:#b91c1c;border-radius:3px;font-size:10px;font-weight:700">✕ CANCELLED</span>';
+  } else {
+    html += '<span style="font-weight:700;color:#111827;font-size:12px">' + esc(formatDateOnly(current)) + '</span>';
   }
   html += '</div>';
+
+  // ── Timeline thread ──
+  html += '<div style="margin-top:7px;border-left:2px solid #e2e8f0;padding-left:13px;margin-left:4px">';
+  events.forEach(function(ev, i){
+    var last = i === events.length - 1;
+    html += '<div style="position:relative;' + (last ? '' : 'padding-bottom:9px') + '">';
+    html += '<span style="position:absolute;left:-18px;top:2px;width:8px;height:8px;border-radius:50%;background:' + ev.color + ';box-shadow:0 0 0 2px #fff"></span>';
+    html += '<div style="font-weight:600;color:#374151;font-size:10.5px">' + ev.label + '</div>';
+    if (ev.when) html += '<div style="font-size:9.5px;color:#9ca3af;margin-top:1px">' + ev.when + '</div>';
+    if (ev.detail) html += '<div style="font-size:11px;color:#4b5563;margin-top:1px">' + ev.detail + '</div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
   return html;
 }
 

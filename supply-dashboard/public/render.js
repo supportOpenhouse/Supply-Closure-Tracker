@@ -166,7 +166,8 @@ function _render() {
       icon = ' <span class="sort-icon">\u25B2</span>';
     }
     var isComment = col.hdr.indexOf('Comments') >= 0;
-    h += '<th'+sortable+(isComment?' style="min-width:150px"':'')+'>'+col.hdr+icon+'</th>';
+    var thStyle = isComment ? ' style="min-width:150px"' : (col.hdr === 'Visit Schedule History' ? ' style="min-width:210px"' : '');
+    h += '<th'+sortable+thStyle+'>'+col.hdr+icon+'</th>';
   });
   h += '</tr></thead><tbody>';
 
