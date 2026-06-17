@@ -214,12 +214,12 @@ function visitHistoryCell(p) {
   // ── Header: current state, clearly labelled ──
   var html = '<div style="min-width:190px;font-size:11px;color:#374151">';
   html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
-  html += '<span style="font-size:9.5px;text-transform:uppercase;letter-spacing:0.3px;color:#9ca3af">Visit date</span>';
+  html += '<span style="font-size:10.5px;text-transform:uppercase;letter-spacing:0.3px;color:#9ca3af">Visit date</span>';
   if (cancelledOn) {
-    if (current) html += '<span style="font-weight:600;color:#9ca3af;text-decoration:line-through">' + esc(formatDateOnly(current)) + '</span>';
+    if (current) html += '<span style="font-size:10.5px;font-weight:600;color:#9ca3af;text-decoration:line-through">' + esc(formatDateOnly(current)) + '</span>';
     html += '<span style="padding:1px 7px;background:#fee2e2;color:#b91c1c;border-radius:3px;font-size:10px;font-weight:700">✕ CANCELLED</span>';
   } else {
-    html += '<span style="font-weight:700;color:#111827;font-size:12px">' + esc(formatDateOnly(current)) + '</span>';
+    html += '<span style="font-size:10.5px;font-weight:700;color:#111827">' + esc(formatDateOnly(current)) + '</span>';
   }
   html += '</div>';
 
