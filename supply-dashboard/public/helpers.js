@@ -144,25 +144,18 @@ function formatTimestamp(val) {
   return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) + "T" + p2(d.getHours()) + ":" + p2(d.getMinutes());
 }
 
-// Formats rupees compactly: ₹1.04 Cr (>=1Cr), ₹85.5 L (>=1L), else ₹12,345.
-function formatINRShort(n) {
-  n = Number(n);
-  if (!n || isNaN(n)) return "";
-  if (n >= 10000000) return "₹" + (n / 10000000).toFixed(2).replace(/\.?0+$/, "") + " Cr";
-  if (n >= 100000) return "₹" + (n / 100000).toFixed(1).replace(/\.0$/, "") + " L";
-  return "₹" + n.toLocaleString("en-IN");
-}
-
 // Builds the "OH Price" cell from p.ohPrice (computed server-side against the
-// oh_pricing DB). Match → green price + hover; otherwise → brown "Check Price"
-// with a reason chip and tooltip. See computeOhPrice() in api/properties.js.
+// oh_pricing DB). Match → the acq_price in lakhs, styled like the Ask column;
+// otherwise → brown "Check Price" with a reason chip and tooltip.
+// See computeOhPrice() in api/properties.js.
 function ohPriceCell(p) {
   var oh = p.ohPrice;
   if (!oh || typeof oh !== "object") return '<span style="color:#9ca3af">—</span>';
 
   if (oh.state === "match") {
+    var lakhs = Math.round(oh.price / 100000); // acq_price is in rupees
     var title = oh.area ? "Matched " + oh.area + "sqft" : "Matched on area";
-    return '<span style="font-weight:700;color:#059669" title="' + esc(title) + '">' + esc(formatINRShort(oh.price)) + '</span>';
+    return '<span class="ask-cell" title="' + esc(title) + '">' + esc(lakhs.toLocaleString("en-IN")) + '</span>';
   }
 
   var sub, tip;
