@@ -33,6 +33,8 @@ ALTER TABLE properties ADD COLUMN IF NOT EXISTS rahool_comments TEXT DEFAULT '';
 ALTER TABLE properties ADD COLUMN IF NOT EXISTS prashant_comments TEXT DEFAULT '';
 ALTER TABLE properties ADD COLUMN IF NOT EXISTS demand_team_comments TEXT DEFAULT '';
 ALTER TABLE properties ADD COLUMN IF NOT EXISTS visit_date_history JSONB;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS pricing_comments TEXT DEFAULT '';
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS pricing_comments_at TIMESTAMP;
 ```
 
 Auth tables:
@@ -58,7 +60,8 @@ git add . && git commit -m "Add auth" && git push
 
 | Variable | Value |
 |----------|-------|
-| `DATABASE_URL` | Your Neon connection string |
+| `DATABASE_URL` | Your Neon connection string (main dashboard DB) |
+| `DIRECT_INVENTORY_DB_URL` | Neon connection string for the Direct Inventory DB (holds the `oh_pricing` table — read-only; powers the "OH Price" column) |
 | `GOOGLE_CLIENT_ID` | From Step 1 |
 | `JWT_SECRET` | Any random string |
 

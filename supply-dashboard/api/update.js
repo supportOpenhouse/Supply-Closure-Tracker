@@ -10,7 +10,8 @@ const COMMENT_FIELDS = [
   "poc_comments",
   "rahool_comments",
   "prashant_comments",
-  "manager_comments"
+  "manager_comments",
+  "pricing_comments"
 ];
 
 const ADMIN_FIELDS = ["assigned_by", "is_high_priority"];
@@ -155,6 +156,7 @@ module.exports = async function handler(req, res) {
       "rahool_comments": "rahool_comments_at",
       "prashant_comments": "prashant_comments_at",
       "manager_comments": "manager_comments_at",
+      "pricing_comments": "pricing_comments_at",
     };
 
     const tsCol = COMMENT_TS[field];

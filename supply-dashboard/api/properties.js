@@ -1,4 +1,4 @@
-const { getDB } = require("./_db");
+const { getDB, getInventoryDB } = require("./_db");
 const { requireAuth, nameFromEmail } = require("./_auth");
 
 // ── Legacy data from Google Sheet (cached in memory) ──
@@ -64,12 +64,77 @@ async function getAffordableMap(sql) {
   return map;
 }
 
-// Times an async step and logs its duration to the Vercel function logs.
-function timed(label, thunk) {
+// ── oh_pricing cache (Direct Inventory DB; slow-changing, synced periodically) ──
+let ohPricingCache = { data: null, fetchedAt: 0 };
+const OH_PRICING_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Builds two lookups keyed by normalized society:
+//   priceByKey:       "<societyNorm>|<area>" -> acq_price (max when several rows match)
+//   areasBySociety:   societyNorm -> sorted list of areas that have an acq_price
+// Only rows WITH a non-null acq_price are considered "priced".
+async function getOhPricing() {
+  const now = Date.now();
+  if (ohPricingCache.data && (now - ohPricingCache.fetchedAt) < OH_PRICING_TTL) {
+    return ohPricingCache.data;
+  }
+  const isql = getInventoryDB(); // throws if DIRECT_INVENTORY_DB_URL is unset
+  const rows = await isql`
+    SELECT society, area_sqft, acq_price
+    FROM oh_pricing
+    WHERE acq_price IS NOT NULL AND area_sqft IS NOT NULL
+  `;
+  const priceByKey = new Map();
+  const areasSet = new Map(); // societyNorm -> Set<area>
+  rows.forEach(r => {
+    const soc = normSociety(r.society);
+    if (!soc) return;
+    const area = parseInt(r.area_sqft, 10);
+    if (!area || isNaN(area)) return;
+    const acq = Number(r.acq_price);
+    if (!acq || isNaN(acq)) return;
+    const key = soc + "|" + area;
+    const prev = priceByKey.get(key);
+    if (prev == null || acq > prev) priceByKey.set(key, acq); // keep the max
+    if (!areasSet.has(soc)) areasSet.set(soc, new Set());
+    areasSet.get(soc).add(area);
+  });
+  const areasBySociety = new Map();
+  for (const [soc, set] of areasSet) {
+    areasBySociety.set(soc, Array.from(set).sort((a, b) => a - b));
+  }
+  const data = { priceByKey, areasBySociety };
+  ohPricingCache = { data, fetchedAt: now };
+  return data;
+}
+
+// Computes the OH Price match for a property against the oh_pricing lookups.
+// Match = same society (normalized) + EXACT area. BHK is ignored.
+function computeOhPrice(p, ohp) {
+  const soc = normSociety(p.society);
+  const areas = ohp.areasBySociety.get(soc);
+  if (!areas || areas.length === 0) return { state: "no_match" };
+
+  const propArea = Math.round(parseFloat(p.areaSqft));
+  if (!propArea || isNaN(propArea)) return { state: "no_area" };
+
+  const exact = ohp.priceByKey.get(soc + "|" + propArea);
+  if (exact != null) return { state: "match", price: exact, area: propArea };
+
+  let offBy = Infinity;
+  for (const a of areas) {
+    const d = Math.abs(a - propArea);
+    if (d < offBy) offBy = d;
+  }
+  return { state: "area_off", offBy };
+}
+
+// Times an async step and records its duration into `timings` so all stages
+// can be logged together on one line (Vercel collapses multi-line logs).
+function timed(label, thunk, timings) {
   const start = Date.now();
   return Promise.resolve().then(thunk).then(
-    (r) => { console.log(`[properties] ${label}: ${Date.now() - start}ms`); return r; },
-    (e) => { console.error(`[properties] ${label} FAILED after ${Date.now() - start}ms: ${e.message}`); throw e; }
+    (r) => { if (timings) timings[label] = Date.now() - start; return r; },
+    (e) => { if (timings) timings[label] = "ERR"; console.error(`[properties] ${label} FAILED after ${Date.now() - start}ms: ${e.message}`); throw e; }
   );
 }
 
@@ -83,10 +148,11 @@ module.exports = async function handler(req, res) {
   try {
     const sql = getDB();
     const tStart = Date.now();
+    const timings = {};
 
     // Steps 1–3 fetch independent data — run them in parallel so total latency
     // is the slowest call, not the sum of all of them.
-    const [rows, legacyData, edits, affordableMap] = await Promise.all([
+    const [rows, legacyData, edits, affordableMap, ohPricing] = await Promise.all([
       timed("live_query", () => sql`
         SELECT
           uid, source, demand_price,
@@ -109,17 +175,20 @@ module.exports = async function handler(req, res) {
           prashant_comments, manager_comments,
           poc_comments_at, rahool_comments_at,
           prashant_comments_at, manager_comments_at,
+          pricing_comments, pricing_comments_at,
           key_handover_date, token_remarks, is_token_refunded, followup_dates, is_high_priority,
           visit_date_history
         FROM properties
         WHERE (is_dead IS NULL OR is_dead = false)
         ORDER BY created_at DESC
-      `),
-      timed("legacy_sheet", () => getLegacyData()),
-      timed("legacy_edits", () => sql`SELECT uid, field, value, updated_at FROM legacy_edits`)
+      `, timings),
+      timed("legacy_sheet", () => getLegacyData(), timings),
+      timed("legacy_edits", () => sql`SELECT uid, field, value, updated_at FROM legacy_edits`, timings)
         .catch((e) => { console.error("[properties] legacy_edits failed:", e.message); return []; }),
-      timed("master_societies", () => getAffordableMap(sql))
+      timed("master_societies", () => getAffordableMap(sql), timings)
         .catch((e) => { console.error("[properties] master_societies failed:", e.message); return new Map(); }),
+      timed("oh_pricing", () => getOhPricing(), timings)
+        .catch((e) => { console.error("[properties] oh_pricing failed:", e.message); return { priceByKey: new Map(), areasBySociety: new Map() }; }),
     ]);
 
     const liveProperties = rows.map(transformRow);
@@ -142,6 +211,7 @@ module.exports = async function handler(req, res) {
         "rahool_comments": "rahoolComments",
         "prashant_comments": "prashantComments",
         "manager_comments": "managerComments",
+        "pricing_comments": "pricingComments",
         // Property fields (from edit modal)
         "society_name": "society",
         "locality": "locality",
@@ -180,6 +250,7 @@ module.exports = async function handler(req, res) {
         "rahool_comments": "rahoolCommentsAt",
         "prashant_comments": "prashantCommentsAt",
         "manager_comments": "managerCommentsAt",
+        "pricing_comments": "pricingCommentsAt",
         "status_override": "statusOverrideAt",
       };
       legacyWithEdits.forEach(p => {
@@ -206,16 +277,20 @@ module.exports = async function handler(req, res) {
     // Merge live + legacy.
     const allProperties = [...liveProperties, ...legacyWithEdits];
 
-    // Flag affordable societies using the cached master_societies map.
+    // Flag affordable societies, and match OH Price from the oh_pricing DB.
     allProperties.forEach(p => {
       const key = normSociety(p.society);
       p.affordable = affordableMap.has(key) ? affordableMap.get(key) : false;
+      p.ohPrice = computeOhPrice(p, ohPricing);
     });
-    console.log(`[properties] assembled ${allProperties.length} rows in ${Date.now() - tStart}ms`);
+
+    // One consolidated log line so the per-stage breakdown is visible without
+    // expanding Vercel's collapsed multi-line groups.
+    const fmtTimings = () => Object.entries(timings).map(([k, v]) => `${k}=${v}ms`).join(" ");
 
     // Step 4: Visibility filter
     if (user.role === "admin") {
-      console.log(`[properties] total ${Date.now() - tStart}ms (admin, ${allProperties.length} rows)`);
+      console.log(`[properties] total ${Date.now() - tStart}ms (admin, ${allProperties.length} rows) | ${fmtTimings()}`);
       return res.status(200).json(allProperties);
     }
 
@@ -228,7 +303,7 @@ module.exports = async function handler(req, res) {
     let managedNames = [];
     if (ownName) {
       try {
-        const rows = await timed("managed_team", () => sql`SELECT managed_team FROM users WHERE LOWER(name) = ${ownName.toLowerCase()} LIMIT 1`);
+        const rows = await timed("managed_team", () => sql`SELECT managed_team FROM users WHERE LOWER(name) = ${ownName.toLowerCase()} LIMIT 1`, timings);
         if (rows.length > 0 && rows[0].managed_team) {
           const raw = rows[0].managed_team;
           const arr = Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw) : []);
@@ -270,7 +345,7 @@ module.exports = async function handler(req, res) {
       return false;
     });
 
-    console.log(`[properties] total ${Date.now() - tStart}ms (${user.role}, ${filtered.length}/${allProperties.length} rows)`);
+    console.log(`[properties] total ${Date.now() - tStart}ms (${user.role}, ${filtered.length}/${allProperties.length} rows) | ${fmtTimings()}`);
     return res.status(200).json(filtered);
   } catch (err) {
     console.error("Error fetching properties:", err);
@@ -368,6 +443,8 @@ function transformRow(r) {
     rahoolCommentsAt: r.rahool_comments_at || "",
     prashantCommentsAt: r.prashant_comments_at || "",
     managerCommentsAt: r.manager_comments_at || "",
+    pricingComments: r.pricing_comments || "",
+    pricingCommentsAt: r.pricing_comments_at || "",
     keysHandoverDate: r.key_handover_date || "",
     tokenRemarks: r.token_remarks || "",
     isTokenRefunded: r.is_token_refunded || false,

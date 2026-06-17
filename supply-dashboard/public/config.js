@@ -90,6 +90,7 @@ const DB_TO_JS_FIELD = {
   manager_comments: "managerComments",
   rahool_comments: "rahoolComments",
   prashant_comments: "prashantComments",
+  pricing_comments: "pricingComments",
   assigned_by: "assignedBy",
   followup_date: "followupDates",
   is_high_priority: "isHighPriority",

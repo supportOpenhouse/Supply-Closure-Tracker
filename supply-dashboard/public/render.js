@@ -152,7 +152,7 @@ function _render() {
   var isAdmin = currentUser && currentUser.role === 'admin';
   var isManager = currentUser && currentUser.role === 'manager';
   var COLS = [
-    {hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"ID / Lead ID",key:"uid"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Visit Schedule History",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Followup Date",key:null},{hdr:"Offer Price",key:null},{hdr:"Property Score",key:null},{hdr:"Price Score",key:null},{hdr:"Deal Multiplier",key:null},{hdr:"Brokerage",key:"supplyDashBrokerage"},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"Internal Remarks",key:null},{hdr:"POC Comments",key:null},{hdr:"Manager Comments",key:null},{hdr:"Rahool Comments",key:null},{hdr:"Prashant Comments",key:null}
+    {hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"ID / Lead ID",key:"uid"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"OH Price",key:null},{hdr:"Pricing Comments",key:null},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Visit Schedule History",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Followup Date",key:null},{hdr:"Offer Price",key:null},{hdr:"Property Score",key:null},{hdr:"Price Score",key:null},{hdr:"Deal Multiplier",key:null},{hdr:"Brokerage",key:"supplyDashBrokerage"},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"Internal Remarks",key:null},{hdr:"POC Comments",key:null},{hdr:"Manager Comments",key:null},{hdr:"Rahool Comments",key:null},{hdr:"Prashant Comments",key:null}
   ];
   // Admin-only Priority column (first)
   if (isAdmin) COLS.unshift({hdr:"\u2605", key:"isHighPriority"});
@@ -191,6 +191,27 @@ function _render() {
     h += '<td class="unit-cell">'+(p.unitNo||"\u2014")+'</td>';
     h += '<td>'+(p.configuration||"\u2014")+'</td>';
     h += '<td class="ask-cell">'+(p.demandPrice||"\u2014")+'</td>';
+
+    // OH Price (computed from oh_pricing DB; read-only)
+    h += '<td style="white-space:nowrap;font-size:11px">'+ohPriceCell(p)+'</td>';
+
+    // Pricing Comments (editable comment field)
+    {
+      var pcDot = p.uid + "_pricing_comments";
+      var pcTs = timeAgo(p.pricingCommentsAt);
+      h += '<td onclick="event.stopPropagation()">';
+      if (canEdit()) {
+        h += '<textarea class="comment-input" placeholder="\u2014" oninput="changeComment(\''+p.uid+'\',\'pricing_comments\',\'pricingComments\',this.value)">'+esc(p.pricingComments||"")+'</textarea>';
+        h += '<div style="display:flex;align-items:center;gap:3px;margin-top:2px">';
+        h += '<span id="dot_'+pcDot+'" class="save-dot '+(saveStatus[pcDot]||'')+'"></span>';
+        if (pcTs) h += '<span style="font-size:9px;color:#9ca3af">'+pcTs+'</span>';
+        h += '</div>';
+      } else {
+        h += '<div style="font-size:11px;color:#374151;max-width:160px">'+esc(p.pricingComments||"\u2014")+'</div>';
+      }
+      h += '</td>';
+    }
+
     h += '<td>'+(p.areaSqft||"\u2014")+'</td>';
     h += '<td style="text-align:center">'+(p.floor||"\u2014")+'</td>';
     h += '<td>'+esc(p.source)+'</td>';
