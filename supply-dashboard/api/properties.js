@@ -47,6 +47,32 @@ async function getLegacyData() {
   }
 }
 
+// ── master_societies cache (slow-changing reference data) ──
+let societyCache = { map: null, fetchedAt: 0 };
+const SOCIETY_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const normSociety = (s) => (s || "").toString().trim().toLowerCase().replace(/\s+/g, " ");
+
+async function getAffordableMap(sql) {
+  const now = Date.now();
+  if (societyCache.map && (now - societyCache.fetchedAt) < SOCIETY_CACHE_TTL) {
+    return societyCache.map;
+  }
+  const rows = await sql`SELECT society_name, affordable FROM master_societies`;
+  const map = new Map();
+  rows.forEach(s => { const key = normSociety(s.society_name); if (key) map.set(key, s.affordable === true); });
+  societyCache = { map, fetchedAt: now };
+  return map;
+}
+
+// Times an async step and logs its duration to the Vercel function logs.
+function timed(label, thunk) {
+  const start = Date.now();
+  return Promise.resolve().then(thunk).then(
+    (r) => { console.log(`[properties] ${label}: ${Date.now() - start}ms`); return r; },
+    (e) => { console.error(`[properties] ${label} FAILED after ${Date.now() - start}ms: ${e.message}`); throw e; }
+  );
+}
+
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
@@ -56,44 +82,51 @@ module.exports = async function handler(req, res) {
 
   try {
     const sql = getDB();
+    const tStart = Date.now();
 
-    // Step 1: Get live properties from Neon
-    const rows = await sql`
-      SELECT 
-        uid, source, demand_price,
-        first_name, last_name, owner_broker_name,
-        contact_no, city, locality, society_name, unit_no, floor, tower_no,
-        configuration, area_sqft, bathrooms, balconies, gas_pipeline,
-        parking, furnishing, furnishing_details, exit_facing,
-        video_link, registry_status, occupancy_status,
-        guaranteed_sale_price, performance_guarantee,
-        initial_period, grace_period, outstanding_loan, bank_name_loan,
-        field_exec, assigned_by, token_requested_by,
-        schedule_date, schedule_submitted_at, lead_id, visit_submitted_at, token_submitted_at,
-        token_deal_submitted_at, final_submitted_at, listing_submitted_at,
-        cp_bill_submitted_at, pending_request_submitted_at, ama_submitted_at,
-        deal_token_amount, remaining_amount,
-        balcony_details, additional_images,
-        exit_compass_image, documents_available,
-        status_override, status_override_at,
-        offer_price, property_score, price_score, supply_dash_brokerage, poc_comments, rahool_comments,
-        prashant_comments, manager_comments,
-        poc_comments_at, rahool_comments_at,
-        prashant_comments_at, manager_comments_at,
-        key_handover_date, token_remarks, is_token_refunded, followup_dates, is_high_priority,
-        visit_date_history
-      FROM properties
-      WHERE (is_dead IS NULL OR is_dead = false)
-      ORDER BY created_at DESC
-    `;
+    // Steps 1–3 fetch independent data — run them in parallel so total latency
+    // is the slowest call, not the sum of all of them.
+    const [rows, legacyData, edits, affordableMap] = await Promise.all([
+      timed("live_query", () => sql`
+        SELECT
+          uid, source, demand_price,
+          first_name, last_name, owner_broker_name,
+          contact_no, city, locality, society_name, unit_no, floor, tower_no,
+          configuration, area_sqft, bathrooms, balconies, gas_pipeline,
+          parking, furnishing, furnishing_details, exit_facing,
+          video_link, registry_status, occupancy_status,
+          guaranteed_sale_price, performance_guarantee,
+          initial_period, grace_period, outstanding_loan, bank_name_loan,
+          field_exec, assigned_by, token_requested_by,
+          schedule_date, schedule_submitted_at, lead_id, visit_submitted_at, token_submitted_at,
+          token_deal_submitted_at, final_submitted_at, listing_submitted_at,
+          cp_bill_submitted_at, pending_request_submitted_at, ama_submitted_at,
+          deal_token_amount, remaining_amount,
+          balcony_details,
+          exit_compass_image, documents_available,
+          status_override, status_override_at,
+          offer_price, property_score, price_score, supply_dash_brokerage, poc_comments, rahool_comments,
+          prashant_comments, manager_comments,
+          poc_comments_at, rahool_comments_at,
+          prashant_comments_at, manager_comments_at,
+          key_handover_date, token_remarks, is_token_refunded, followup_dates, is_high_priority,
+          visit_date_history
+        FROM properties
+        WHERE (is_dead IS NULL OR is_dead = false)
+        ORDER BY created_at DESC
+      `),
+      timed("legacy_sheet", () => getLegacyData()),
+      timed("legacy_edits", () => sql`SELECT uid, field, value, updated_at FROM legacy_edits`)
+        .catch((e) => { console.error("[properties] legacy_edits failed:", e.message); return []; }),
+      timed("master_societies", () => getAffordableMap(sql))
+        .catch((e) => { console.error("[properties] master_societies failed:", e.message); return new Map(); }),
+    ]);
 
     const liveProperties = rows.map(transformRow);
 
-    // Step 2: Load legacy data from Google Sheet + apply edits from DB
-    const legacyData = await getLegacyData();
+    // Apply legacy edits (already fetched above) onto the Google-Sheet rows.
     let legacyWithEdits = legacyData.map(r => ({...r})); // shallow copy
-    try {
-      const edits = await sql`SELECT uid, field, value, updated_at FROM legacy_edits`;
+    {
       const editMap = {}; // uid -> { field: {value, updated_at} }
       edits.forEach(e => {
         if (!editMap[e.uid]) editMap[e.uid] = {};
@@ -168,31 +201,21 @@ module.exports = async function handler(req, res) {
           if (tsKey && obj.updated_at) p[tsKey] = obj.updated_at;
         });
       });
-    } catch {}
+    }
 
-    // Step 3: Merge live + legacy
+    // Merge live + legacy.
     const allProperties = [...liveProperties, ...legacyWithEdits];
 
-    // Step 3.5: Join with master_societies on society name to flag whether the
-    // society is "affordable". Unmatched societies default to false (No).
-    try {
-      const societyRows = await sql`SELECT society_name, affordable FROM master_societies`;
-      const affordableMap = new Map();
-      const normSociety = (s) => (s || "").toString().trim().toLowerCase().replace(/\s+/g, " ");
-      societyRows.forEach(s => {
-        const key = normSociety(s.society_name);
-        if (key) affordableMap.set(key, s.affordable === true);
-      });
-      allProperties.forEach(p => {
-        const key = normSociety(p.society);
-        p.affordable = (key && affordableMap.has(key)) ? affordableMap.get(key) : false;
-      });
-    } catch (err) {
-      console.error("master_societies join failed:", err.message);
-    }
+    // Flag affordable societies using the cached master_societies map.
+    allProperties.forEach(p => {
+      const key = normSociety(p.society);
+      p.affordable = affordableMap.has(key) ? affordableMap.get(key) : false;
+    });
+    console.log(`[properties] assembled ${allProperties.length} rows in ${Date.now() - tStart}ms`);
 
     // Step 4: Visibility filter
     if (user.role === "admin") {
+      console.log(`[properties] total ${Date.now() - tStart}ms (admin, ${allProperties.length} rows)`);
       return res.status(200).json(allProperties);
     }
 
@@ -205,7 +228,7 @@ module.exports = async function handler(req, res) {
     let managedNames = [];
     if (ownName) {
       try {
-        const rows = await sql`SELECT managed_team FROM users WHERE LOWER(name) = ${ownName.toLowerCase()} LIMIT 1`;
+        const rows = await timed("managed_team", () => sql`SELECT managed_team FROM users WHERE LOWER(name) = ${ownName.toLowerCase()} LIMIT 1`);
         if (rows.length > 0 && rows[0].managed_team) {
           const raw = rows[0].managed_team;
           const arr = Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw) : []);
@@ -247,6 +270,7 @@ module.exports = async function handler(req, res) {
       return false;
     });
 
+    console.log(`[properties] total ${Date.now() - tStart}ms (${user.role}, ${filtered.length}/${allProperties.length} rows)`);
     return res.status(200).json(filtered);
   } catch (err) {
     console.error("Error fetching properties:", err);
