@@ -155,7 +155,8 @@ function ohPriceCell(p) {
   if (oh.state === "match") {
     var lakhs = Math.round(oh.price / 100000); // acq_price is in rupees
     var title = oh.area ? "Matched " + oh.area + "sqft" : "Matched on area";
-    return '<span class="ask-cell" title="' + esc(title) + '">' + esc(lakhs.toLocaleString("en-IN")) + '</span>';
+    // Same size/weight as the Ask column (12px, 600) but green.
+    return '<span style="font-weight:600;font-size:12px;color:#059669" title="' + esc(title) + '">' + esc(lakhs.toLocaleString("en-IN")) + '</span>';
   }
 
   var sub, tip;
