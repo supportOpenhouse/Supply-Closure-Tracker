@@ -165,8 +165,11 @@ function _render() {
     } else if (col.key) {
       icon = ' <span class="sort-icon">\u25B2</span>';
     }
-    var isComment = col.hdr.indexOf('Comments') >= 0;
-    var thStyle = isComment ? ' style="min-width:150px"' : (col.hdr === 'Visit Schedule History' ? ' style="min-width:210px"' : '');
+    var thStyle = '';
+    if (col.hdr === 'OH Price') thStyle = ' style="width:110px;min-width:110px"';
+    else if (col.hdr === 'Pricing Comments') thStyle = ' style="width:180px;min-width:180px"';
+    else if (col.hdr === 'Visit Schedule History') thStyle = ' style="min-width:210px"';
+    else if (col.hdr.indexOf('Comments') >= 0) thStyle = ' style="min-width:150px"';
     h += '<th'+sortable+thStyle+'>'+col.hdr+icon+'</th>';
   });
   h += '</tr></thead><tbody>';
@@ -193,13 +196,13 @@ function _render() {
     h += '<td class="ask-cell">'+(p.demandPrice||"\u2014")+'</td>';
 
     // OH Price (computed from oh_pricing DB; read-only)
-    h += '<td style="white-space:nowrap;font-size:11px">'+ohPriceCell(p)+'</td>';
+    h += '<td style="width:110px;white-space:nowrap;font-size:11px">'+ohPriceCell(p)+'</td>';
 
     // Pricing Comments (editable comment field)
     {
       var pcDot = p.uid + "_pricing_comments";
       var pcTs = timeAgo(p.pricingCommentsAt);
-      h += '<td onclick="event.stopPropagation()">';
+      h += '<td style="width:180px" onclick="event.stopPropagation()">';
       if (canEdit()) {
         h += '<textarea class="comment-input" placeholder="\u2014" oninput="changeComment(\''+p.uid+'\',\'pricing_comments\',\'pricingComments\',this.value)">'+esc(p.pricingComments||"")+'</textarea>';
         h += '<div style="display:flex;align-items:center;gap:3px;margin-top:2px">';
