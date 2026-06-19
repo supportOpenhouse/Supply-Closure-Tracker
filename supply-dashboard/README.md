@@ -35,6 +35,7 @@ ALTER TABLE properties ADD COLUMN IF NOT EXISTS demand_team_comments TEXT DEFAUL
 ALTER TABLE properties ADD COLUMN IF NOT EXISTS visit_date_history JSONB;
 ALTER TABLE properties ADD COLUMN IF NOT EXISTS pricing_comments TEXT DEFAULT '';
 ALTER TABLE properties ADD COLUMN IF NOT EXISTS pricing_comments_at TIMESTAMP;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS direct_demand_priority BOOLEAN NOT NULL DEFAULT false;
 ```
 
 Auth tables:

@@ -30,6 +30,39 @@ function _render() {
     const pendingCount = adminRequests.filter(r => r.status === 'pending').length;
     h += '<div class="user-bar">';
     h += '<span class="email">'+esc(currentUser.name || currentUser.email)+'</span>';
+
+    // ── Notification bell (Direct Demand priority requests) ──
+    var priorityProps = DATA.filter(function(d){ return d.directDemandPriority; });
+    var notifCount = priorityProps.length;
+    h += '<div style="position:relative" onclick="event.stopPropagation()">';
+    h += '<button onclick="toggleNotif()" title="Direct Demand priority requests" style="position:relative;padding:4px 9px;font-size:15px;line-height:1;border:1px solid '+(notifCount>0?'#fdba74':'#e5e7eb')+';background:'+(notifCount>0?'#fff7ed':'#fff')+';border-radius:5px;cursor:pointer">'+(notifCount>0?'🔔':'🔕');
+    if (notifCount > 0) h += '<span style="position:absolute;top:-7px;right:-7px;min-width:17px;height:17px;padding:0 4px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;border-radius:9px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px #fff">'+notifCount+'</span>';
+    h += '</button>';
+    if (state.notifOpen) {
+      h += '<div style="position:absolute;top:calc(100% + 8px);right:0;width:360px;max-height:440px;overflow-y:auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,0.18);z-index:60;text-align:left">';
+      h += '<div style="padding:13px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,#fff7ed,#ffffff);border-radius:12px 12px 0 0">';
+      h += '<span style="font-size:17px">⚡</span>';
+      h += '<div style="flex:1"><div style="font-weight:700;font-size:13px;color:#111827">Priority Requests</div><div style="font-size:10px;color:#9ca3af">From the Direct Demand team</div></div>';
+      if (notifCount > 0) h += '<span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 8px">'+notifCount+'</span>';
+      h += '</div>';
+      if (notifCount === 0) {
+        h += '<div style="padding:28px 16px;text-align:center;color:#9ca3af;font-size:12px">🎉 All caught up — no priority requests right now.</div>';
+      } else {
+        priorityProps.forEach(function(pp){
+          var loc = [pp.towerNo, pp.unitNo].filter(Boolean).join(' · ');
+          var meta = [pp.uid, pp.city].filter(Boolean).join(' · ');
+          h += '<div onclick="openNotifProperty(\''+pp.uid+'\')" onmouseover="this.style.background=\'#fff7ed\'" onmouseout="this.style.background=\'#fff\'" style="padding:12px 16px;border-bottom:1px solid #f3f4f6;cursor:pointer;transition:background 0.12s">';
+          h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><span style="font-size:11px">⚡</span><span style="font-size:9.5px;font-weight:700;color:#c2410c;text-transform:uppercase;letter-spacing:0.4px">Direct Demand — Priority Requested</span></div>';
+          h += '<div style="font-size:12px;color:#374151;line-height:1.5">Direct Demand Team is requesting priority on <b style="color:#111827">'+esc(pp.society||"this property")+'</b>'+(loc?' <span style="color:#6b7280">('+esc(loc)+')</span>':'')+'.</div>';
+          if (meta) h += '<div style="font-size:10px;color:#9ca3af;margin-top:5px;font-family:monospace">'+esc(meta)+'</div>';
+          h += '<div style="font-size:10px;color:#2563eb;font-weight:600;margin-top:5px">Open in tracker →</div>';
+          h += '</div>';
+        });
+      }
+      h += '</div>';
+    }
+    h += '</div>';
+
     if (currentUser.role === 'admin') {
       h += '<button onclick="window.open(\'/logs.html\',\'_blank\')" style="padding:4px 10px;font-size:11px;border:1px solid #e5e7eb;background:#fff;border-radius:5px;cursor:pointer">Logs</button>';
       h += '<button class="admin-btn" onclick="openAdmin()">Manage Users';

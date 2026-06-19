@@ -123,9 +123,12 @@ async function silentRefresh() {
 
 init();
 
-// Close multi-select dropdown on outside click
+// Close multi-select dropdown / notification panel on outside click
 document.addEventListener("click", function() {
-  if (state.msOpen) { state.msOpen = null; render(); }
+  var changed = false;
+  if (state.msOpen) { state.msOpen = null; changed = true; }
+  if (state.notifOpen) { state.notifOpen = false; changed = true; }
+  if (changed) render();
 });
 
 // Keyboard navigation for the image modal: ← / → step through the
