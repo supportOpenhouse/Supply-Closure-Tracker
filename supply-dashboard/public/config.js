@@ -61,8 +61,7 @@ let state = {
   page: 1,
   sortCol: null,
   sortDir: "asc",
-  msOpen: null,
-  notifOpen: false
+  msOpen: null
 };
 const PAGE_SIZE = 50;
 

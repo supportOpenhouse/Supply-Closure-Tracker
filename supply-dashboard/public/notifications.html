@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Priority Requests - Openhouse</title>
+<link rel="icon" href="/favicon.png" type="image/png">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif }
+body { background:#f9fafb; color:#111827; font-size:13px }
+.header { background:#fff; border-bottom:1px solid #e5e7eb; padding:14px 20px; display:flex; align-items:center; justify-content:space-between }
+.header-left { display:flex; align-items:center; gap:10px }
+.logo { width:30px; height:30px; border-radius:6px }
+.header h1 { font-size:16px; font-weight:700 }
+.header .subtitle { font-size:11px; color:#6b7280 }
+.user-bar { display:flex; align-items:center; gap:10px; font-size:12px }
+.user-bar button { padding:4px 10px; font-size:11px; border:1px solid #e5e7eb; background:#fff; border-radius:5px; cursor:pointer }
+.user-bar button:hover { background:#f3f4f6 }
+.user-bar .primary { background:#111827; color:#fff; border-color:#111827 }
+.user-bar .primary:hover { background:#1f2937 }
+.banner { background:linear-gradient(90deg,#fff7ed,#fffbeb); border-bottom:1px solid #fde68a; padding:14px 20px; display:flex; align-items:center; gap:12px }
+.banner .icon { font-size:22px }
+.banner .title { font-size:14px; font-weight:700; color:#9a3412 }
+.banner .sub { font-size:11px; color:#b45309; margin-top:1px }
+.banner .count { margin-left:auto; background:#dc2626; color:#fff; font-size:12px; font-weight:700; border-radius:12px; padding:3px 12px }
+.filter-bar { background:#fff; padding:10px 20px; border-bottom:1px solid #e5e7eb; display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+.filter-bar input[type="text"] { padding:5px 8px; font-size:12px; border:1px solid #e5e7eb; border-radius:5px; outline:none }
+.filter-bar input[type="text"]:focus { border-color:#111827 }
+.ms-wrap { position:relative }
+.ms-btn { padding:5px 10px; font-size:12px; border:1px solid #e5e7eb; border-radius:5px; background:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:4px; min-width:110px; justify-content:space-between }
+.ms-btn:hover { background:#f9fafb }
+.ms-btn.active { border-color:#111827; background:#f3f4f6; font-weight:600 }
+.ms-drop { position:absolute; top:calc(100% + 2px); left:0; z-index:100; background:#fff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.1); max-height:300px; overflow-y:auto; min-width:200px; padding:4px 0 }
+.ms-item { padding:6px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:8px; white-space:nowrap }
+.ms-item:hover { background:#f3f4f6 }
+.ms-check { width:14px; height:14px; border:1px solid #d1d5db; border-radius:3px; display:inline-flex; align-items:center; justify-content:center; font-size:10px; color:#fff; flex-shrink:0 }
+.ms-check.on { background:#111827; border-color:#111827 }
+.ms-clear { padding:6px 12px; font-size:11px; color:#dc2626; cursor:pointer; border-top:1px solid #f3f4f6 }
+.ms-clear:hover { background:#fef2f2 }
+table { width:100%; border-collapse:collapse; background:#fff }
+thead { position:sticky; top:0; background:#f9fafb; z-index:10 }
+th { text-align:left; padding:10px 12px; font-size:10px; font-weight:600; color:#6b7280; text-transform:uppercase; border-bottom:1px solid #e5e7eb; white-space:nowrap }
+th.sortable { cursor:pointer; user-select:none }
+th.sortable:hover { background:#f3f4f6 }
+.sort-icon { font-size:9px; color:#d1d5db; margin-left:4px }
+.sort-icon.active { color:#111827 }
+td { padding:10px 12px; border-bottom:1px solid #f3f4f6; vertical-align:middle; font-size:12px }
+tr:hover td { background:#fffbeb }
+.mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px }
+.society { font-weight:600; color:#111827 }
+.ask { font-weight:600; color:#b45309 }
+.open-btn { padding:4px 10px; font-size:11px; font-weight:600; border:1px solid #c7d2fe; background:#eef2ff; color:#3730a3; border-radius:5px; cursor:pointer; white-space:nowrap }
+.open-btn:hover { background:#e0e7ff }
+.empty, .loading, .no-access { padding:48px 20px; text-align:center; color:#9ca3af; font-size:13px }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <img src="/logo.png" class="logo" alt="OH">
+    <div>
+      <h1>Priority Requests</h1>
+      <div class="subtitle" id="subtitle">From the Direct Demand team</div>
+    </div>
+  </div>
+  <div class="user-bar" id="userBar"></div>
+</div>
+
+<div class="banner" id="banner" style="display:none">
+  <span class="icon">⚡</span>
+  <div>
+    <div class="title">Direct Demand Team is requesting priority on the following properties</div>
+    <div class="sub">Jump in and help close these faster 🚀</div>
+  </div>
+  <span class="count" id="bannerCount"></span>
+</div>
+
+<div class="filter-bar" id="filterBar" style="display:none"></div>
+<div id="tableWrap"><div class="loading">Loading priority requests…</div></div>
+
+<script>
+let currentUser = null;
+let allProps = [];
+let options = { cities:[], pocs:[] };
+let state = { search:"", cities:[], pocs:[], msOpen:null, sortCol:"society", sortDir:"asc" };
+
+function esc(s) { return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+async function init() {
+  try {
+    const authRes = await fetch("/api/auth/me");
+    if (!authRes.ok) { window.location.href = "/login.html"; return; }
+    const { user } = await authRes.json();
+    currentUser = user;
+    renderUserBar();
+
+    const res = await fetch("/api/properties");
+    if (res.status === 401) { window.location.href = "/login.html"; return; }
+    if (!res.ok) throw new Error("Server error " + res.status);
+    const data = await res.json();
+    allProps = (data || []).filter(function(p){ return p.directDemandPriority; });
+
+    options.cities = [...new Set(allProps.map(function(p){return p.city}).filter(Boolean))].sort();
+    options.pocs = [...new Set(allProps.map(function(p){return p.assignedBy}).filter(Boolean))].sort();
+
+    document.getElementById("banner").style.display = allProps.length ? "flex" : "none";
+    document.getElementById("bannerCount").innerText = allProps.length;
+    document.getElementById("filterBar").style.display = allProps.length ? "flex" : "none";
+    renderFilters();
+    renderTable();
+  } catch (e) {
+    document.getElementById("tableWrap").innerHTML = '<div class="empty">Failed to load: ' + esc(e.message) + '</div>';
+  }
+}
+
+function renderUserBar() {
+  const bar = document.getElementById("userBar");
+  if (!currentUser) return;
+  let h = '<span>' + esc(currentUser.name || currentUser.email) + '</span>';
+  h += '<button class="primary" onclick="window.location.href=\'/\'">Dashboard</button>';
+  h += '<button onclick="logout()">Logout</button>';
+  bar.innerHTML = h;
+}
+
+async function logout() {
+  await fetch("/api/auth/logout", { method: "POST" });
+  window.location.href = "/login.html";
+}
+
+function renderFilters() {
+  const bar = document.getElementById("filterBar");
+  let h = "";
+  h += '<input type="text" placeholder="Search society, owner, UID…" value="' + esc(state.search) + '" oninput="state.search=this.value;renderTable()" style="width:220px">';
+  h += msDropdown("cities", "City", options.cities, state.cities);
+  h += msDropdown("pocs", "POC", options.pocs, state.pocs);
+  const hasFilters = state.search || state.cities.length || state.pocs.length;
+  if (hasFilters) h += '<button onclick="clearAll()" style="padding:5px 10px;font-size:11px;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;border-radius:5px;cursor:pointer;font-weight:500">&times; Clear</button>';
+  h += '<span style="margin-left:auto;font-size:11px;color:#9ca3af" id="resultCount"></span>';
+  bar.innerHTML = h;
+}
+
+function msDropdown(key, label, opts, selected) {
+  const isOpen = state.msOpen === key;
+  const count = selected.length;
+  const displayLabel = count > 0 ? label + " (" + count + ")" : label;
+  let h = '<div class="ms-wrap">';
+  h += '<button class="ms-btn' + (count > 0 ? ' active' : '') + '" onclick="event.stopPropagation();toggleMs(\'' + key + '\')">' + esc(displayLabel) + ' <span>&#9662;</span></button>';
+  if (isOpen) {
+    h += '<div class="ms-drop" onclick="event.stopPropagation()">';
+    if (opts.length === 0) {
+      h += '<div class="ms-item" style="color:#9ca3af">No options</div>';
+    } else {
+      opts.forEach(function(opt) {
+        const on = selected.indexOf(opt) >= 0;
+        h += '<div class="ms-item" onclick="toggleItem(\'' + key + '\',\'' + esc(opt).replace(/'/g, "\\'") + '\')">';
+        h += '<div class="ms-check' + (on ? ' on' : '') + '">' + (on ? '&#10003;' : '') + '</div>' + esc(opt) + '</div>';
+      });
+      if (count > 0) h += '<div class="ms-clear" onclick="clearMs(\'' + key + '\')">Clear</div>';
+    }
+    h += '</div>';
+  }
+  h += '</div>';
+  return h;
+}
+
+function toggleMs(key) { state.msOpen = state.msOpen === key ? null : key; renderFilters(); }
+function toggleItem(key, val) {
+  const arr = state[key];
+  const i = arr.indexOf(val);
+  if (i >= 0) arr.splice(i, 1); else arr.push(val);
+  renderFilters(); renderTable();
+}
+function clearMs(key) { state[key] = []; renderFilters(); renderTable(); }
+function clearAll() { state.search = ""; state.cities = []; state.pocs = []; state.msOpen = null; renderFilters(); renderTable(); }
+
+document.addEventListener("click", function(e) {
+  if (state.msOpen && !e.target.closest(".ms-wrap")) { state.msOpen = null; renderFilters(); }
+});
+
+function getFiltered() {
+  let rows = allProps.filter(function(p) {
+    if (state.cities.length && state.cities.indexOf(p.city) === -1) return false;
+    if (state.pocs.length && state.pocs.indexOf(p.assignedBy) === -1) return false;
+    if (state.search) {
+      const s = state.search.toLowerCase();
+      return [p.uid, p.society, p.ownerName, p.city, p.locality, p.towerNo, p.unitNo, p.contactNo, p.leadId]
+        .some(function(v){ return (v || "").toString().toLowerCase().includes(s); });
+    }
+    return true;
+  });
+  const col = state.sortCol, dir = state.sortDir === "asc" ? 1 : -1;
+  rows.sort(function(a, b) {
+    let va = (a[col] || "").toString().toLowerCase();
+    let vb = (b[col] || "").toString().toLowerCase();
+    const na = parseFloat(va), nb = parseFloat(vb);
+    if (!isNaN(na) && !isNaN(nb)) return (na - nb) * dir;
+    return va.localeCompare(vb) * dir;
+  });
+  return rows;
+}
+
+function renderTable() {
+  const rows = getFiltered();
+  const countEl = document.getElementById("resultCount");
+  if (countEl) countEl.innerText = rows.length + (rows.length === 1 ? " property" : " properties");
+
+  if (allProps.length === 0) {
+    document.getElementById("tableWrap").innerHTML = '<div class="empty">🎉 All caught up — no priority requests right now.</div>';
+    return;
+  }
+  if (rows.length === 0) {
+    document.getElementById("tableWrap").innerHTML = '<div class="empty">No priority requests match the current filters.</div>';
+    return;
+  }
+
+  const cols = [
+    {k:"uid", l:"UID"},
+    {k:"society", l:"Society"},
+    {k:"city", l:"City"},
+    {k:"locality", l:"Location"},
+    {k:"towerNo", l:"Tower"},
+    {k:"unitNo", l:"Unit"},
+    {k:"configuration", l:"Config"},
+    {k:"demandPrice", l:"Ask (Lakhs)"},
+    {k:"assignedBy", l:"POC"},
+    {k:"statusOverride", l:"Status"},
+    {k:"_open", l:"", noSort:true}
+  ];
+  let h = '<table><thead><tr>';
+  cols.forEach(function(c) {
+    if (c.noSort) { h += '<th></th>'; return; }
+    const active = state.sortCol === c.k;
+    const icon = active ? (state.sortDir === "asc" ? "▲" : "▼") : "▲";
+    h += '<th class="sortable" onclick="toggleSort(\'' + c.k + '\')">' + esc(c.l) + ' <span class="sort-icon' + (active ? ' active' : '') + '">' + icon + '</span></th>';
+  });
+  h += '</tr></thead><tbody>';
+  rows.forEach(function(p) {
+    h += '<tr>';
+    h += '<td class="mono">' + esc(p.uid || "—") + (p.leadId ? ' <span style="color:#9ca3af">(' + esc(p.leadId) + ')</span>' : '') + '</td>';
+    h += '<td class="society">' + esc(p.society || "—") + '</td>';
+    h += '<td>' + esc(p.city || "—") + '</td>';
+    h += '<td>' + esc(p.locality || "—") + '</td>';
+    h += '<td>' + esc(p.towerNo || "—") + '</td>';
+    h += '<td class="mono">' + esc(p.unitNo || "—") + '</td>';
+    h += '<td>' + esc(p.configuration || "—") + '</td>';
+    h += '<td class="ask">' + esc(p.demandPrice || "—") + '</td>';
+    h += '<td>' + esc(p.assignedBy || "—") + '</td>';
+    h += '<td>' + esc(p.statusOverride || "—") + '</td>';
+    h += '<td><button class="open-btn" onclick="openInTracker(\'' + esc(p.uid).replace(/'/g, "\\'") + '\')">Open in tracker →</button></td>';
+    h += '</tr>';
+  });
+  h += '</tbody></table>';
+  document.getElementById("tableWrap").innerHTML = h;
+}
+
+function toggleSort(col) {
+  if (state.sortCol === col) state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+  else { state.sortCol = col; state.sortDir = "asc"; }
+  renderTable();
+}
+
+function openInTracker(uid) {
+  window.location.href = "/?search=" + encodeURIComponent(uid);
+}
+
+init();
+</script>
+</body>
+</html>

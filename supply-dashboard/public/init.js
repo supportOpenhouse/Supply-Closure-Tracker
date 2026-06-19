@@ -30,6 +30,20 @@ async function init() {
     await fetchProperties();
     lastDataHash = quickHash(DATA);
 
+    // Deep link from the Priority Requests page: /?search=<uid> pre-fills the
+    // search bar (and clears filters that could hide the row) and expands it.
+    try {
+      var q = new URLSearchParams(window.location.search).get("search");
+      if (q) {
+        state.search = q;
+        state.cityFilter = "All"; state.statusFilter = []; state.pocFilter = [];
+        state.sourceFilter = "All"; state.dateFilter = "all"; state.followupDateFilter = [];
+        if ("affordableFilter" in state) state.affordableFilter = "All";
+        var hit = DATA.find(function(d){ return d.uid === q; });
+        if (hit) state.expandedId = q;
+      }
+    } catch (e) {}
+
     render();
 
     // Start auto-polling every 30 seconds
@@ -123,12 +137,9 @@ async function silentRefresh() {
 
 init();
 
-// Close multi-select dropdown / notification panel on outside click
+// Close multi-select dropdown on outside click
 document.addEventListener("click", function() {
-  var changed = false;
-  if (state.msOpen) { state.msOpen = null; changed = true; }
-  if (state.notifOpen) { state.notifOpen = false; changed = true; }
-  if (changed) render();
+  if (state.msOpen) { state.msOpen = null; render(); }
 });
 
 // Keyboard navigation for the image modal: ← / → step through the

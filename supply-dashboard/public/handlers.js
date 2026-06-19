@@ -11,32 +11,6 @@ function toggleMs(which) {
   render();
 }
 
-// Notification bell — open/close the Direct Demand priority panel.
-function toggleNotif() {
-  state.notifOpen = !state.notifOpen;
-  state.msOpen = null;
-  render();
-}
-
-// Clicking a notification jumps the tracker to that property: clear filters
-// that could hide it, search its UID, and scroll to the top of the table.
-function openNotifProperty(uid) {
-  state.notifOpen = false;
-  state.search = uid;
-  state.cityFilter = "All";
-  state.statusFilter = [];
-  state.pocFilter = [];
-  state.sourceFilter = "All";
-  state.dateFilter = "all";
-  state.followupDateFilter = [];
-  if ("affordableFilter" in state) state.affordableFilter = "All";
-  state.expandedId = uid;
-  state.page = 1;
-  render();
-  var tw = document.getElementById("tableWrap");
-  if (tw) tw.scrollTop = 0;
-}
-
 
 
 function toggleMsItem(key, val) {
