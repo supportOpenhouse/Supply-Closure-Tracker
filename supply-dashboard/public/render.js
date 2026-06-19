@@ -190,7 +190,7 @@ function _render() {
     const sc = STATUS_COLORS[status] || STATUS_COLORS["New"];
     const isExp = state.expandedId === p.uid;
 
-    h += '<tr class="datarow'+(isExp?' expanded':'')+(p.isHighPriority?' priority-row':'')+(isFollowupPending(p)?' followup-pending':'')+'" onclick="toggleExpand(\''+p.uid+'\')">';
+    h += '<tr class="datarow'+(isExp?' expanded':'')+(p.isHighPriority?' priority-row':'')+(p.directDemandPriority?' direct-demand':'')+(isFollowupPending(p)?' followup-pending':'')+'" onclick="toggleExpand(\''+p.uid+'\')">';
     if (isAdmin) h += '<td onclick="event.stopPropagation()" style="text-align:center;width:36px"><input type="checkbox" '+(p.isHighPriority?'checked ':'')+'onclick="togglePriority(\''+p.uid+'\',event)" style="cursor:pointer;width:14px;height:14px;accent-color:#10b981"></td>';
     h += '<td style="font-size:11px;white-space:nowrap;color:#6b7280">'+formatDateOnly(p.scheduleSubmittedAt)+'</td>';
     h += '<td style="font-size:11px;white-space:nowrap;font-family:monospace">'+esc(p.uid||"")+(p.leadId?' <span style="color:#9ca3af">('+esc(p.leadId)+')</span>':'')+'</td>';
