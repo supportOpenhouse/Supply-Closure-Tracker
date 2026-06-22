@@ -1,8 +1,9 @@
-const ALL_STATUSES = ["AMA Req","AMA Signed","Cancelled Post Token","Dead - Legal","Dead - Not Interested","Dead - Sold","Duplicacy","Followup","Future Prospect","Hold","Key Handover","Listed","Negotiation","OH Rejected","Price High","Seller Rejected","Token Requested","Token Transferred","Visit Completed","Visit Scheduled"];
+const ALL_STATUSES = ["AMA Req","AMA Signed","Cancelled Post Token","Dead - Legal","Dead - Not Interested","Dead - Sold","Duplicacy","Followup","Future Prospect","Hold","Key Handover","Listed","Negotiation","OH Rejected","Price High","Seller Rejected","Token Requested","Token Transferred","Visit Cancelled","Visit Completed","Visit Scheduled"];
 
-// Auto-stage statuses — derived from form submissions (see getStage()).
-// Users cannot manually set these; they are excluded from the change dropdown.
-const AUTO_STAGE_STATUSES = ["Cancelled Post Token","Listed","Key Handover","AMA Signed","AMA Req","Token Transferred","Token Requested","Visit Completed","Visit Scheduled"];
+// Auto-stage statuses — derived from form submissions (see getStage()) or the
+// is_dead flag ("Visit Cancelled"). Users cannot manually set these; they are
+// excluded from the change dropdown.
+const AUTO_STAGE_STATUSES = ["Cancelled Post Token","Listed","Key Handover","AMA Signed","AMA Req","Token Transferred","Token Requested","Visit Completed","Visit Scheduled","Visit Cancelled"];
 
 // Statuses a user may manually pick when changing status.
 const MANUAL_STATUSES = ALL_STATUSES.filter(function(s) { return AUTO_STAGE_STATUSES.indexOf(s) < 0; });
@@ -27,6 +28,7 @@ const STATUS_COLORS = {
   "Duplicacy":           {bg:"#9ca3af",text:"#fff"},
   "Hold":                {bg:"#6b7280",text:"#fff"},
   "Cancelled Post Token":{bg:"#b45309",text:"#fff"},
+  "Visit Cancelled":     {bg:"#b91c1c",text:"#fff"},
   "Seller Rejected":     {bg:"#dc2626",text:"#fff"},
   "New":                 {bg:"#d1d5db",text:"#374151"},
 };

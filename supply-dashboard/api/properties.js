@@ -177,9 +177,8 @@ module.exports = async function handler(req, res) {
           prashant_comments_at, manager_comments_at,
           pricing_comments, pricing_comments_at,
           key_handover_date, token_remarks, is_token_refunded, followup_dates, is_high_priority,
-          visit_date_history, direct_demand_priority
+          visit_date_history, direct_demand_priority, is_dead
         FROM properties
-        WHERE (is_dead IS NULL OR is_dead = false)
         ORDER BY created_at DESC
       `, timings),
       timed("legacy_sheet", () => getLegacyData(), timings),
@@ -450,6 +449,7 @@ function transformRow(r) {
     isTokenRefunded: r.is_token_refunded || false,
     isHighPriority: r.is_high_priority || false,
     directDemandPriority: r.direct_demand_priority || false,
+    isDead: r.is_dead || false,
     followupDates: parseJson(r.followup_dates),
     visitDateHistory: parseJsonObject(r.visit_date_history),
   };

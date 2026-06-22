@@ -36,6 +36,8 @@ function getStage(p) {
 }
 
 function getStatus(p) {
+  // is_dead is terminal — shown as "Visit Cancelled", wins over everything.
+  if (p.isDead) return 'Visit Cancelled';
   var autoStage = getStage(p);
   var manual = p.statusOverride || "";
 
