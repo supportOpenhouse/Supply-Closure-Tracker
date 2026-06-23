@@ -1,4 +1,4 @@
-const ALL_STATUSES = ["AMA Req","AMA Signed","Cancelled Post Token","Dead - Legal","Dead - Not Interested","Dead - Sold","Duplicacy","Followup","Future Prospect","Hold","Key Handover","Listed","Negotiation","OH Rejected","Price High","Seller Rejected","Token Requested","Token Transferred","Visit Cancelled","Visit Completed","Visit Scheduled"];
+const ALL_STATUSES = ["AMA Req","AMA Signed","Cancelled Post Token","Dead - Legal","Dead - Not Interested","Dead - Sold","Duplicacy","Followup","Future Prospect","Key Handover","Listed","Negotiation","OH Rejected","Seller Rejected","Token Requested","Token Transferred","Visit Cancelled","Visit Completed","Visit Scheduled"];
 
 // Auto-stage statuses — derived from form submissions (see getStage()) or the
 // is_dead flag ("Visit Cancelled"). Users cannot manually set these; they are
@@ -20,13 +20,11 @@ const STATUS_COLORS = {
   "Key Handover":        {bg:"#10b981",text:"#fff"},
   "Listed":              {bg:"#06b6d4",text:"#fff"},
   "Future Prospect":     {bg:"#0369a1",text:"#fff"},
-  "Price High":          {bg:"#be123c",text:"#fff"},
   "OH Rejected":         {bg:"#e11d48",text:"#fff"},
   "Dead - Sold":         {bg:"#9f1239",text:"#fff"},
   "Dead - Not Interested":{bg:"#881337",text:"#fff"},
   "Dead - Legal":        {bg:"#7f1d1d",text:"#fff"},
   "Duplicacy":           {bg:"#9ca3af",text:"#fff"},
-  "Hold":                {bg:"#6b7280",text:"#fff"},
   "Cancelled Post Token":{bg:"#b45309",text:"#fff"},
   "Visit Cancelled":     {bg:"#b91c1c",text:"#fff"},
   "Seller Rejected":     {bg:"#dc2626",text:"#fff"},
