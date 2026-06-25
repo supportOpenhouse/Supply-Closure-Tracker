@@ -177,7 +177,8 @@ module.exports = async function handler(req, res) {
           prashant_comments_at, manager_comments_at,
           pricing_comments, pricing_comments_at,
           key_handover_date, token_remarks, is_token_refunded, followup_dates, is_high_priority,
-          visit_date_history, direct_demand_priority, is_dead
+          visit_date_history, direct_demand_priority, is_dead,
+          replicated_from, replicated
         FROM properties
         ORDER BY created_at DESC
       `, timings),
@@ -450,6 +451,8 @@ function transformRow(r) {
     isHighPriority: r.is_high_priority || false,
     directDemandPriority: r.direct_demand_priority || false,
     isDead: r.is_dead || false,
+    replicatedFrom: r.replicated_from || "",
+    replicated: r.replicated || false,
     followupDates: parseJson(r.followup_dates),
     visitDateHistory: parseJsonObject(r.visit_date_history),
   };

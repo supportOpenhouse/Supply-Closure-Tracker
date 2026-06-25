@@ -193,7 +193,11 @@ function _render() {
     h += '<tr class="datarow'+(isExp?' expanded':'')+(p.isHighPriority?' priority-row':'')+(p.directDemandPriority?' direct-demand':'')+(isFollowupPending(p)?' followup-pending':'')+'" onclick="toggleExpand(\''+p.uid+'\')">';
     if (isAdmin) h += '<td onclick="event.stopPropagation()" style="text-align:center;width:36px"><input type="checkbox" '+(p.isHighPriority?'checked ':'')+'onclick="togglePriority(\''+p.uid+'\',event)" style="cursor:pointer;width:14px;height:14px;accent-color:#10b981"></td>';
     h += '<td style="font-size:11px;white-space:nowrap;color:#6b7280">'+formatDateOnly(p.scheduleSubmittedAt)+'</td>';
-    h += '<td style="font-size:11px;white-space:nowrap;font-family:monospace">'+esc(p.uid||"")+(p.leadId?' <span style="color:#9ca3af">('+esc(p.leadId)+')</span>':'')+'</td>';
+    h += '<td style="font-size:11px;font-family:monospace">';
+    h += '<span style="white-space:nowrap">'+esc(p.uid||"")+(p.leadId?' <span style="color:#9ca3af">('+esc(p.leadId)+')</span>':'')+'</span>';
+    if (p.replicatedFrom) h += '<div style="font-size:9px;color:#9ca3af;margin-top:2px">replicated from: '+esc(p.replicatedFrom)+'</div>';
+    if (p.replicated) h += '<div style="font-size:9px;color:#9ca3af;margin-top:2px">was replicated</div>';
+    h += '</td>';
     h += '<td class="society-cell">'+esc(p.society)+'</td>';
     h += '<td>'+esc(p.city||"\u2014")+'</td>';
     h += '<td>'+esc(p.locality)+'</td>';
