@@ -232,9 +232,10 @@ function _render() {
     h += '<td>'+esc(p.ownerName)+'</td>';
     h += '<td style="font-size:11px;white-space:nowrap">'+(p.contactNo||"\u2014")+'</td>';
 
-    // Status
+    // Status — locked (read-only) once a lead is Cancelled Post Token.
+    var stageLocked = status === 'Cancelled Post Token';
     h += '<td onclick="event.stopPropagation()">';
-    if (canEdit()) {
+    if (canEdit() && !stageLocked) {
       h += '<select class="status-select" style="background:'+sc.bg+';color:'+sc.text+'" onchange="changeStatus(\''+p.uid+'\',this.value)">';
       // If the current status is an auto-derived stage (not user-selectable),
       // still show it as the selected option so the displayed value is correct.
@@ -245,7 +246,7 @@ function _render() {
       h += '</select>';
       h += '<span id="dot_'+p.uid+'_status_override" class="save-dot '+(saveStatus[p.uid+'_status_override']||'')+'"></span>';
     } else {
-      h += '<span class="status-select" style="background:'+sc.bg+';color:'+sc.text+';display:inline-block;padding:3px 8px;border-radius:4px">'+esc(status)+'</span>';
+      h += '<span class="status-select" '+(stageLocked?'title="Stage locked — Cancelled Post Token cannot be changed" ':'')+'style="background:'+sc.bg+';color:'+sc.text+';display:inline-block;padding:3px 8px;border-radius:4px">'+(stageLocked?'🔒 ':'')+esc(status)+'</span>';
     }
     var statusTs = getStatusTimestamp(p, status);
     if (statusTs) {

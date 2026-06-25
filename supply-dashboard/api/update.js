@@ -83,6 +83,24 @@ module.exports = async function handler(req, res) {
 
     const sql = getDB();
 
+    // Lock: once a lead is "Cancelled Post Token", its stage cannot be changed
+    // by anyone (admin included). Setting it TO Cancelled Post Token is allowed.
+    if (field === "status_override" && value !== "Cancelled Post Token") {
+      let locked = false;
+      try {
+        if (uid.startsWith("LEGACY-")) {
+          const cur = await sql`SELECT value FROM legacy_edits WHERE uid = ${uid} AND field = 'status_override'`;
+          locked = cur.length > 0 && cur[0].value === "Cancelled Post Token";
+        } else {
+          const cur = await sql`SELECT status_override, is_token_refunded FROM properties WHERE uid = ${uid}`;
+          locked = cur.length > 0 && (cur[0].is_token_refunded === true || cur[0].status_override === "Cancelled Post Token");
+        }
+      } catch (e) { /* if the lookup fails, fall through and let the write proceed */ }
+      if (locked) {
+        return res.status(403).json({ error: "This lead is Cancelled Post Token — its stage is locked and cannot be changed." });
+      }
+    }
+
     // Legacy rows
     if (uid.startsWith("LEGACY-")) {
       let oldValue = "";

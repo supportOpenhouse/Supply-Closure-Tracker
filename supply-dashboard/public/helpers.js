@@ -39,6 +39,11 @@ function getStatus(p) {
   var autoStage = getStage(p);
   var manual = p.statusOverride || "";
 
+  // Cancelled Post Token is absolutely terminal: once a lead reaches it (via a
+  // token refund or a manual override), the stage is locked and nothing can
+  // supersede it — not even a higher-ranked manual override.
+  if (autoStage === "Cancelled Post Token" || manual === "Cancelled Post Token") return "Cancelled Post Token";
+
   // No manual override → use auto
   if (!manual) return autoStage;
 
