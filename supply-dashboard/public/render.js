@@ -119,7 +119,7 @@ function _render() {
   h += '</div>';
   h += '<select onchange="updateFilter(\'sourceFilter\',this.value)"><option value="All">All Sources</option><option value="CP"'+(state.sourceFilter==="CP"?' selected':'')+'>CP</option><option value="Direct"'+(state.sourceFilter==="Direct"?' selected':'')+'>Direct</option></select>';
   h += '<select onchange="updateFilter(\'affordableFilter\',this.value)"><option value="All">Affordable: Yes, No</option><option value="Yes"'+(state.affordableFilter==="Yes"?' selected':'')+'>Affordable: Yes</option><option value="No"'+(state.affordableFilter==="No"?' selected':'')+'>Affordable: No</option></select>';
-  h += '<button onclick="toggleNegFloorFilter()" style="padding:2px 8px;font-size:10px;border-radius:4px;cursor:pointer;border:1px solid '+(state.negFloorFilter?'#b91c1c':'#e5e7eb')+';background:'+(state.negFloorFilter?'#b91c1c':'#fff')+';color:'+(state.negFloorFilter?'#fff':'#6b7280')+';font-weight:'+(state.negFloorFilter?'600':'400')+';transition:all 0.15s">-ve value floors</button>';
+  h += '<div class="ms-btn" onclick="toggleNegFloorFilter()"'+(state.negFloorFilter?' style="border-color:#b91c1c;color:#b91c1c;background:#fef2f2;font-weight:600"':'')+'>-ve value floors</div>';
   // Followup Date multi-select
   h += '<div class="ms-wrap">';
   h += '<div class="ms-btn" onclick="event.stopPropagation();toggleMs(\'followup\')">';
