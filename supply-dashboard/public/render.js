@@ -119,6 +119,7 @@ function _render() {
   h += '</div>';
   h += '<select onchange="updateFilter(\'sourceFilter\',this.value)"><option value="All">All Sources</option><option value="CP"'+(state.sourceFilter==="CP"?' selected':'')+'>CP</option><option value="Direct"'+(state.sourceFilter==="Direct"?' selected':'')+'>Direct</option></select>';
   h += '<select onchange="updateFilter(\'affordableFilter\',this.value)"><option value="All">Affordable: Yes, No</option><option value="Yes"'+(state.affordableFilter==="Yes"?' selected':'')+'>Affordable: Yes</option><option value="No"'+(state.affordableFilter==="No"?' selected':'')+'>Affordable: No</option></select>';
+  h += '<button onclick="toggleNegFloorFilter()" style="padding:2px 8px;font-size:10px;border-radius:4px;cursor:pointer;border:1px solid '+(state.negFloorFilter?'#b91c1c':'#e5e7eb')+';background:'+(state.negFloorFilter?'#b91c1c':'#fff')+';color:'+(state.negFloorFilter?'#fff':'#6b7280')+';font-weight:'+(state.negFloorFilter?'600':'400')+';transition:all 0.15s">-ve value floors</button>';
   // Followup Date multi-select
   h += '<div class="ms-wrap">';
   h += '<div class="ms-btn" onclick="event.stopPropagation();toggleMs(\'followup\')">';
@@ -136,7 +137,7 @@ function _render() {
     h += '</div>';
   }
   h += '</div>';
-  var hasFilters = state.search || state.cityFilter !== "All" || state.statusFilter.length > 0 || state.pocFilter.length > 0 || state.sourceFilter !== "All" || state.sortCol || state.dateFilter !== "all" || state.followupDateFilter.length > 0;
+  var hasFilters = state.search || state.cityFilter !== "All" || state.statusFilter.length > 0 || state.pocFilter.length > 0 || state.sourceFilter !== "All" || state.sortCol || state.dateFilter !== "all" || state.followupDateFilter.length > 0 || state.negFloorFilter;
   if (hasFilters) {
     h += '<button onclick="clearAllFilters()" style="padding:3px 8px;border-radius:5px;font-size:10px;cursor:pointer;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;transition:all 0.15s;font-weight:500">&times; Clear</button>';
   }
@@ -227,7 +228,11 @@ function _render() {
     }
 
     h += '<td>'+(p.areaSqft||"\u2014")+'</td>';
-    h += '<td style="text-align:center">'+(p.floor||"\u2014")+'</td>';
+    if (isNegValueFloor(p.floor)) {
+      h += '<td style="text-align:center"><span style="display:inline-block;min-width:18px;padding:1px 5px;background:#fee2e2;color:#b91c1c;border:1px solid #b91c1c;border-radius:3px;font-weight:700">'+esc(p.floor)+'</span></td>';
+    } else {
+      h += '<td style="text-align:center">'+esc(p.floor||"\u2014")+'</td>';
+    }
     h += '<td>'+esc(p.source)+'</td>';
     h += '<td>'+esc(p.ownerName)+'</td>';
     h += '<td style="font-size:11px;white-space:nowrap">'+(p.contactNo||"\u2014")+'</td>';

@@ -28,6 +28,12 @@ function clearMs(key) {
   render();
 }
 
+function toggleNegFloorFilter() {
+  state.negFloorFilter = !state.negFloorFilter;
+  state.page = 1;
+  render();
+}
+
 function clearAllFilters() {
   state.search = "";
   state.cityFilter = "All";
@@ -38,6 +44,7 @@ function clearAllFilters() {
   state.dateFrom = "";
   state.dateTo = "";
   state.followupDateFilter = [];
+  state.negFloorFilter = false;
   state.sortCol = null;
   state.sortDir = "asc";
   state.page = 1;

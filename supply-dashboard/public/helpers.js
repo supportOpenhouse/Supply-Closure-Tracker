@@ -19,6 +19,15 @@ const STAGE_RANK = {
 // Terminal statuses — always win, no matter what
 const TERMINAL_STATUSES = ["Dead - Legal","Dead - Sold","Dead - Not Interested","Cancelled Post Token","Duplicacy","OH Rejected","Seller Rejected"];
 
+// "Negative-value" floors — undesirable floors (top, ground, 13th). Flagged
+// red in the Floor column and selectable via the '-ve value floors' filter.
+const NEG_VALUE_FLOORS = ["Top", "Ground", "13"];
+function isNegValueFloor(floor) {
+  if (!floor) return false;
+  var f = String(floor).trim().toLowerCase();
+  return NEG_VALUE_FLOORS.some(function(v){ return v.toLowerCase() === f; });
+}
+
 function getStage(p) {
   if (p.isTokenRefunded)              return 'Cancelled Post Token';
   if (p.listingSubmittedAt)           return 'Listed';
@@ -338,6 +347,7 @@ function getFiltered() {
       if (state.affordableFilter === "Yes" && p.affordable !== true) return false;
       if (state.affordableFilter === "No" && p.affordable !== false) return false;
     }
+    if (state.negFloorFilter && !isNegValueFloor(p.floor)) return false;
     // Followup Date filter (multi-select on latest followup date)
     if (state.followupDateFilter.length > 0) {
       const latest = getLatestFollowupDate(p);

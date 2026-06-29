@@ -50,6 +50,7 @@ let state = {
   pocFilter: [],
   sourceFilter: "All",
   affordableFilter: "All",
+  negFloorFilter: false, // show only "negative-value" floors (Top/Ground/13)
   dateFilter: "all", // all | yesterday | week | month | custom
   dateFrom: "",
   dateTo: "",
