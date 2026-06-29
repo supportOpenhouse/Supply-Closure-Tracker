@@ -195,8 +195,8 @@ function _render() {
     h += '<td style="font-size:11px;white-space:nowrap;color:#6b7280">'+formatDateOnly(p.scheduleSubmittedAt)+'</td>';
     h += '<td style="font-size:11px;font-family:monospace">';
     h += '<span style="white-space:nowrap">'+esc(p.uid||"")+(p.leadId?' <span style="color:#9ca3af">('+esc(p.leadId)+')</span>':'')+'</span>';
-    if (p.replicatedFrom) h += '<div style="font-size:9px;color:#9ca3af;margin-top:2px">replicated from: '+esc(p.replicatedFrom)+'</div>';
-    if (p.replicated) h += '<div style="font-size:9px;color:#9ca3af;margin-top:2px">was replicated</div>';
+    if ((isAdmin || isManager) && p.replicatedFrom) h += '<div style="font-size:9px;color:#9ca3af;margin-top:2px">replicated from: '+esc(p.replicatedFrom)+'</div>';
+    if ((isAdmin || isManager) && p.replicated) h += '<div style="font-size:9px;color:#9ca3af;margin-top:2px">was replicated</div>';
     h += '</td>';
     h += '<td class="society-cell">'+esc(p.society)+'</td>';
     h += '<td>'+esc(p.city||"\u2014")+'</td>';
