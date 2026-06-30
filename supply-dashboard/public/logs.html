@@ -376,6 +376,27 @@ function renderDetails(category, details) {
     return h;
   }
 
+  if (cat === "comment") {
+    const labels = { poc_comments:"POC", rahool_comments:"Rahool", prashant_comments:"Prashant", manager_comments:"Manager", pricing_comments:"Pricing" };
+    const label = labels[d.field] || (d.field || "Comment");
+    let h = '<div class="details-meta">' + esc(label) + ' comment</div>';
+    h += '<div class="details-main">';
+    h += '<span class="old-val">' + esc(d.old || "—") + '</span>';
+    h += '<span class="arrow">&rarr;</span>';
+    h += '<span class="new-val">' + esc(d.new || "—") + '</span>';
+    h += '</div>';
+    return h;
+  }
+
+  if (cat === "date") {
+    const label = d.field === "followup_date" ? "Followup date" : (d.field || "Date");
+    let h = '<div class="details-main"><b>' + esc(label) + ':</b> ';
+    if (d.old) h += '<span class="old-val">' + esc(d.old) + '</span><span class="arrow">&rarr;</span>';
+    h += '<span class="new-val">' + esc(d.new || "—") + '</span>';
+    h += '</div>';
+    return h;
+  }
+
   if (cat === "form") {
     let h = '<div class="details-main"><b>Form ' + esc(d.form_number || "?") + '</b>';
     if (d.is_draft) h += ' <span style="color:#f59e0b">(Draft)</span>';
