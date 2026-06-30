@@ -35,9 +35,10 @@ module.exports = async function handler(req, res) {
     const newRole = role || "viewer";
 
     try {
-      // Capture existing role (if any) so we can tell add vs. role change.
-      const existing = await sql`SELECT role FROM dashboard_users WHERE email = ${normalizedEmail}`;
+      // Capture existing role/name (if any) so we can tell add vs. edit.
+      const existing = await sql`SELECT role, name FROM dashboard_users WHERE email = ${normalizedEmail}`;
       const oldRole = existing.length > 0 ? (existing[0].role || "") : null;
+      const oldName = existing.length > 0 ? (existing[0].name || "") : null;
 
       await sql`
         INSERT INTO dashboard_users (email, name, role, added_by)
@@ -64,17 +65,20 @@ module.exports = async function handler(req, res) {
             changes: { role: { old: null, new: newRole } },
           },
         });
-      } else if (oldRole !== newRole) {
-        logUserActivity(sql, {
-          uid: normalizedEmail,
-          action: "user_role_changed",
-          actor_email: admin.email,
-          actor_name: admin.name || admin.email,
-          details: {
-            target_email: normalizedEmail,
-            changes: { role: { old: oldRole, new: newRole } },
-          },
-        });
+      } else {
+        // Existing user — log any edit (role and/or name change).
+        const changes = {};
+        if (oldRole !== newRole) changes.role = { old: oldRole, new: newRole };
+        if (oldName !== storedName) changes.name = { old: oldName, new: storedName };
+        if (Object.keys(changes).length > 0) {
+          logUserActivity(sql, {
+            uid: normalizedEmail,
+            action: "user_updated",
+            actor_email: admin.email,
+            actor_name: admin.name || admin.email,
+            details: { target_email: normalizedEmail, changes },
+          });
+        }
       }
 
       return res.status(200).json({ success: true });
@@ -117,6 +121,13 @@ module.exports = async function handler(req, res) {
     const { action } = req.body;
     if (action === "force_logout_all") {
       await sql`UPDATE dashboard_users SET force_logout_at = NOW()`;
+      logUserActivity(sql, {
+        uid: "all",
+        action: "users_force_logout",
+        actor_email: admin.email,
+        actor_name: admin.name || admin.email,
+        details: { source: "manual", scope: "all_users" },
+      });
       return res.status(200).json({ success: true, message: "All users will be logged out on next request" });
     }
     return res.status(400).json({ error: "Unknown action" });

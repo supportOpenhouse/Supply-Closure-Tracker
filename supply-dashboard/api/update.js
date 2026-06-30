@@ -26,6 +26,12 @@ const LOGGED_FIELDS = {
   "assigned_by": { action: "poc_changed", category: "assignment", field: "poc" },
   "status_override": { action: "status_changed", category: "status", field: "status" },
   "is_high_priority": { action: "priority_changed", category: "flag", field: "is_high_priority" },
+  "followup_date": { action: "followup_date_changed", category: "date", field: "followup_date" },
+  "poc_comments": { action: "comment_changed", category: "comment", field: "poc_comments" },
+  "rahool_comments": { action: "comment_changed", category: "comment", field: "rahool_comments" },
+  "prashant_comments": { action: "comment_changed", category: "comment", field: "prashant_comments" },
+  "manager_comments": { action: "comment_changed", category: "comment", field: "manager_comments" },
+  "pricing_comments": { action: "comment_changed", category: "comment", field: "pricing_comments" },
 };
 
 // IST timestamp
@@ -139,6 +145,14 @@ module.exports = async function handler(req, res) {
           VALUES (${uid}, ${'followup_dates'}, ${JSON.stringify(dates)}, NOW())
           ON CONFLICT (uid, field) DO UPDATE SET value = ${JSON.stringify(dates)}, updated_at = NOW()
         `;
+        if (LOGGED_FIELDS[field]) {
+          const fmeta = LOGGED_FIELDS[field];
+          logActivity(sql, {
+            uid, action: fmeta.action, category: fmeta.category,
+            actor_email: user.email, actor_name: user.name || user.email,
+            details: { field: fmeta.field, old: "", new: value || "", source: "supply_dashboard", timestamp_ist: getIST() }
+          });
+        }
         return res.status(200).json({ success: true, uid, field, value });
       }
 
@@ -160,9 +174,10 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, uid, field, value });
     }
 
-    // Live rows — fetch old value before update
+    // Live rows — fetch old value before update. followup_date has no matching
+    // column (it lives in the followup_dates array), so skip the fetch for it.
     let oldValue = "";
-    if (LOGGED_FIELDS[field]) {
+    if (LOGGED_FIELDS[field] && field !== "followup_date") {
       try {
         const old = await sql(`SELECT ${field} as val FROM properties WHERE uid = $1`, [uid]);
         oldValue = old.length > 0 ? (old[0].val || "") : "";

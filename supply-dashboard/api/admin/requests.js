@@ -74,10 +74,21 @@ module.exports = async function handler(req, res) {
         WHERE id = ${id}
       `;
     } else {
+      const reqs = await sql`SELECT email, name FROM access_requests WHERE id = ${id}`;
       await sql`
         UPDATE access_requests SET status = 'rejected', reviewed_by = ${admin.email}, reviewed_at = NOW()
         WHERE id = ${id}
       `;
+      if (reqs.length > 0) {
+        const target = (reqs[0].email || "").toLowerCase();
+        logUserActivity(sql, {
+          uid: target,
+          action: "access_request_rejected",
+          actor_email: admin.email,
+          actor_name: admin.name || admin.email,
+          details: { target_email: target, target_name: reqs[0].name || "", source: "access_request_rejected" },
+        });
+      }
     }
 
     return res.status(200).json({ success: true });
