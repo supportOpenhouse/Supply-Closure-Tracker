@@ -87,6 +87,9 @@ function _render() {
     var noStageOn = state.statusFilter.indexOf("_nostage_") >= 0;
     h += '<div class="ms-item" onclick="toggleMsItem(\'statusFilter\',\'_nostage_\')">';
     h += '<div class="ms-check'+(noStageOn?' on':'')+'">'+(noStageOn?'&#10003;':'')+'</div>(No Stage / Other)</div>';
+    var priorityOn = state.statusFilter.indexOf("_priority_") >= 0;
+    h += '<div class="ms-item" onclick="toggleMsItem(\'statusFilter\',\'_priority_\')">';
+    h += '<div class="ms-check'+(priorityOn?' on':'')+'">'+(priorityOn?'&#10003;':'')+'</div>&#9733; Marked Priority</div>';
     ALL_STATUSES.forEach(function(s) {
       var on = state.statusFilter.indexOf(s) >= 0;
       h += '<div class="ms-item" onclick="toggleMsItem(\'statusFilter\',\''+esc(s)+'\')">';

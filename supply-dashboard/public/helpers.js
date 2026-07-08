@@ -330,8 +330,13 @@ function getFiltered() {
       }
     }
     if (state.cityFilter !== "All" && p.city !== state.cityFilter) return false;
-    // Status: array filter
-    if (state.statusFilter.length > 0 && state.statusFilter.indexOf(getStatus(p)) === -1) return false;
+    // Status: array filter. "_priority_" is a cross-cutting sentinel — rows
+    // whose priority star is on pass regardless of their actual status.
+    if (state.statusFilter.length > 0) {
+      const priorityHit = state.statusFilter.indexOf("_priority_") >= 0 && p.isHighPriority === true;
+      const statusHit   = state.statusFilter.indexOf(getStatus(p)) !== -1;
+      if (!priorityHit && !statusHit) return false;
+    }
     // POC: array filter with blank support
     if (state.pocFilter.length > 0) {
       var poc = (p.assignedBy || "").trim();
