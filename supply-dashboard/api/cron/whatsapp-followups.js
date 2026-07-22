@@ -6,10 +6,50 @@ const TEMPLATES = {
   evening: "supply_tracker_pending_message",
 };
 
-function logActivity(sql, { uid, action, category, actor_email, actor_name, details }) {
-  return sql`INSERT INTO activity_logs (uid, action, category, actor_email, actor_name, details, dashboard)
+// Returns the new activity_logs.id so WhatsApp sends can be linked back to it
+// (wa_interakt_id.log_id). Returns null if the insert fails — logging must
+// never break a send.
+async function logActivity(sql, { uid, action, category, actor_email, actor_name, details }) {
+  try {
+    const rows = await sql`
+      INSERT INTO activity_logs (uid, action, category, actor_email, actor_name, details, dashboard)
       VALUES (${uid}, ${action}, ${category}, ${actor_email || ""}, ${actor_name || ""}, ${JSON.stringify(details)}, ${"Supply Dashboard"})
-  `.catch(err => console.error("Activity log failed:", err.message));
+      RETURNING id
+    `;
+    return rows.length ? rows[0].id : null;
+  } catch (err) {
+    console.error("Activity log failed:", err.message);
+    return null;
+  }
+}
+
+// Rewrites details once the send result is known. Assigns the whole object
+// rather than a jsonb `||` merge, so this works whether activity_logs.details
+// is JSONB or TEXT — same param shape the INSERT above already uses.
+async function updateActivityDetails(sql, logId, details) {
+  if (!logId) return;
+  try {
+    await sql`UPDATE activity_logs SET details = ${JSON.stringify(details)} WHERE id = ${logId}`;
+  } catch (err) {
+    console.error("Activity log update failed:", err.message);
+  }
+}
+
+// Record every Interakt response — successes and failures alike. A failed
+// attempt is exactly what you want visible. Fire-and-forget: never blocks or
+// breaks a send. `name` is deliberately omitted so the wa_fill_name trigger
+// owns the lookup.
+function recordInteraktId(sql, { phone, templateName, body, ctx }) {
+  let result = null;
+  let msgId = null;
+  if (body && typeof body === "object") {
+    if (typeof body.result === "boolean") result = body.result;
+    if (body.id) msgId = String(body.id);
+  }
+  sql`
+    INSERT INTO wa_interakt_id (phone, result, id, template, uid, log_id)
+    VALUES (${phone}, ${result}, ${msgId}, ${templateName}, ${(ctx && ctx.uid) || null}, ${(ctx && ctx.logId) || null})
+  `.catch(err => console.error("WA: failed to record interakt id:", err.message));
 }
 
 // Convert any timestamp/date value to a YYYY-MM-DD string in IST.
@@ -37,8 +77,11 @@ function normalizePhone(raw) {
   return null; // unrecognized format
 }
 
-// Send a WhatsApp via Interakt
-async function sendInteraktMessage({ phone, templateName, bodyValues }) {
+// Send a WhatsApp via Interakt.
+// Pass `sql` + `ctx` ({ uid, logId }) so the Interakt message id is recorded
+// against the activity_logs row that caused it. Recording happens here rather
+// than at the call sites so every send path is covered automatically.
+async function sendInteraktMessage({ phone, templateName, bodyValues }, sql, ctx) {
   const apiKey = process.env.INTERAKT_API_KEY;
   if (!apiKey) throw new Error("INTERAKT_API_KEY not set");
 
@@ -76,11 +119,15 @@ async function sendInteraktMessage({ phone, templateName, bodyValues }) {
     });
     text = await res.text();
   } catch (fetchErr) {
-    return { ok: false, status: 0, body: { error: "fetch_failed", message: fetchErr.message } };
+    const body = { error: "fetch_failed", message: fetchErr.message };
+    if (sql) recordInteraktId(sql, { phone, templateName, body, ctx });
+    return { ok: false, status: 0, body };
   }
 
   let parsed;
   try { parsed = JSON.parse(text); } catch { parsed = { raw: text }; }
+  if (sql) recordInteraktId(sql, { phone, templateName, body: parsed, ctx });
+  // res.ok is already 200-299, so Interakt's 201 counts as success.
   return { ok: res.ok, status: res.status, body: parsed, sent_payload: payload };
 }
 
@@ -116,11 +163,13 @@ module.exports = async function handler(req, res) {
     const phone = normalizePhone(phoneRaw);
     if (!phone) return res.status(400).json({ error: "Diagnostic mode needs ?phone=10digits" });
     try {
+      // Diagnostic sends are still recorded in wa_interakt_id (with a null
+      // log_id — they intentionally create no activity_logs entry).
       const send = await sendInteraktMessage({
         phone,
         templateName,
         bodyValues: [req.query.name || "TestUser", req.query.count || "1"],
-      });
+      }, getDB(), null);
       return res.status(200).json({ diagnostic: true, phone, send });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -254,28 +303,37 @@ module.exports = async function handler(req, res) {
       }
 
       try {
-        const send = await sendInteraktMessage({ phone, templateName, bodyValues });
-        const status = send.ok ? "sent" : "failed";
-        results.push({ poc: pocName, phone, count: info.count, status, response: send.body });
-
-        // Log to activity_logs — use first UID as anchor, list all in details.uids
-        await logActivity(sql, {
+        // Log BEFORE sending so the activity_logs id exists to attach to the
+        // Interakt message record. Use first UID as anchor, list all in details.uids
+        const details = {
+          template: templateName,
+          type,
+          poc: pocName,
+          phone,
+          count: info.count,
+          uids: info.uids,
+          recipients: [{ name: pocName, phone, ok: null }], // result folded back below
+        };
+        const logId = await logActivity(sql, {
           uid: info.uids[0],
           action: "whatsapp_followup_reminder",
           category: "whatsapp",
           actor_email: "system@openhouse.in",
           actor_name: "Auto Reminder Bot",
-          details: {
-            template: templateName,
-            type,
-            poc: pocName,
-            phone,
-            count: info.count,
-            uids: info.uids,
-            recipients: [{ name: pocName, phone, ok: !send.ok }], // matches existing whatsapp log shape
-            interakt_status: send.status,
-          },
+          details,
         });
+
+        const send = await sendInteraktMessage(
+          { phone, templateName, bodyValues },
+          sql,
+          { uid: info.uids[0], logId }
+        );
+        const status = send.ok ? "sent" : "failed";
+        results.push({ poc: pocName, phone, count: info.count, status, response: send.body });
+
+        details.recipients = [{ name: pocName, phone, ok: send.ok }];
+        details.interakt_status = send.status;
+        await updateActivityDetails(sql, logId, details);
       } catch (err) {
         results.push({ poc: pocName, phone, count: info.count, status: "error", error: err.message });
       }
