@@ -55,6 +55,7 @@ function nameFromEmail(email) {
   if (!local) return "";
   return local
     .split(".")
+    .map(p => p.replace(/\d+/g, "")) // drop digits so "kumar2" -> "kumar" (email disambiguators aren't part of the name)
     .filter(Boolean)
     .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
     .join(" ");
