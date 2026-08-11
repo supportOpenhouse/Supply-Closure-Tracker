@@ -88,7 +88,7 @@ function quickHash(data) {
 async function silentRefresh() {
   // Belt-and-suspenders guards (also re-checked after the fetch below).
   if (isUserTyping() || hasPendingEdits()) return;
-  if (showAdminPanel || showBugForm) return;
+  if (showAdminPanel || showBugForm || bulkFU) return;
   if (document.hidden) return;
 
   try {

@@ -55,6 +55,7 @@ let state = {
   dateFrom: "",
   dateTo: "",
   followupDateFilter: [], // multi-select: today, tomorrow, week, past_due, future, none
+  bulkFollowupDate: "", // admin bulk "set followup date on all filtered leads" input
   expandedId: null,
   modalImg: null,
   modalList: [],
@@ -65,6 +66,10 @@ let state = {
   msOpen: null
 };
 const PAGE_SIZE = 50;
+
+// Bulk followup modal state (admin-only). null = closed; otherwise
+// { phase: "confirm"|"running"|"done"|"error", date, uids, total, overwrite, done, error }
+let bulkFU = null;
 
 function canEdit() {
   return currentUser && (currentUser.role === "admin" || currentUser.role === "commenter" || currentUser.role === "manager");

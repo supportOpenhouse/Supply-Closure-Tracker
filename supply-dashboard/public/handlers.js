@@ -271,6 +271,77 @@ function changeFollowupDate(uid, value) {
   saveTimers[key] = setTimeout(() => saveField(uid, "followup_date", value), 8000);
 }
 
+// ── Bulk followup date (admin-only) ──
+function setBulkFollowupDate(v) {
+  state.bulkFollowupDate = v;
+  render();
+}
+
+function openBulkFollowup() {
+  if (!currentUser || currentUser.role !== 'admin' || !state.bulkFollowupDate) return;
+  var filtered = getFiltered();
+  if (filtered.length === 0) return;
+  bulkFU = {
+    phase: "confirm",
+    date: state.bulkFollowupDate,
+    uids: filtered.map(function(p){ return p.uid; }),
+    total: filtered.length,
+    overwrite: filtered.filter(function(p){ return !!getLatestFollowupDate(p); }).length,
+    done: 0,
+    error: ""
+  };
+  renderOverlays();
+}
+
+function closeBulkFollowup() {
+  if (bulkFU && bulkFU.phase === "running") return; // can't dismiss mid-run
+  bulkFU = null;
+  renderOverlays();
+}
+
+async function confirmBulkFollowup() {
+  if (!bulkFU || bulkFU.phase !== "confirm") return;
+  bulkFU.phase = "running";
+  renderOverlays();
+
+  var CHUNK = 50; // matches MAX_UIDS in api/bulk-followup.js
+  try {
+    for (var i = 0; i < bulkFU.uids.length; i += CHUNK) {
+      var chunk = bulkFU.uids.slice(i, i + CHUNK);
+      var res = await fetch("/api/bulk-followup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uids: chunk, date: bulkFU.date })
+      });
+      if (!res.ok) {
+        var body = await res.json().catch(function(){ return {}; });
+        throw new Error(body.error || "Server error " + res.status);
+      }
+      bulkFU.done = Math.min(i + CHUNK, bulkFU.uids.length);
+      updateBulkFollowupProgress();
+    }
+    bulkFU.phase = "done";
+    state.bulkFollowupDate = "";
+    renderOverlays();
+    // Pull the fresh followup dates so the table reflects the change.
+    try { await fetchProperties(); render(); } catch {}
+  } catch (e) {
+    bulkFU.phase = "error";
+    bulkFU.error = e.message || "Update failed";
+    renderOverlays();
+    try { await fetchProperties(); render(); } catch {}
+  }
+}
+
+function updateBulkFollowupProgress() {
+  if (!bulkFU) return;
+  var pct = bulkFU.total ? Math.round(bulkFU.done / bulkFU.total * 100) : 0;
+  var bar = document.getElementById("bulkFuBar");
+  var txt = document.getElementById("bulkFuText");
+  if (bar) bar.style.width = pct + "%";
+  if (txt) txt.textContent = "Updated " + bulkFU.done + " / " + bulkFU.total + " leads";
+}
+
 async function changePoc(uid, value) {
   if (!value) return;
   const prop = DATA.find(p => p.uid === uid);

@@ -156,6 +156,45 @@ function renderOverlays() {
     h += '</div></div></div>';
   }
 
+  // Bulk Followup Date modal (admin-only) — confirm → progress → done/error
+  if (bulkFU) {
+    h += '<div class="bug-overlay" onclick="if(event.target===this)closeBulkFollowup()">';
+    h += '<div class="bug-modal" style="width:400px">';
+    h += '<div class="bug-header"><h2>Set Followup Date</h2>';
+    if (bulkFU.phase !== 'running') h += '<button class="admin-close" onclick="closeBulkFollowup()">&times;</button>';
+    h += '</div>';
+    h += '<div class="bug-body">';
+
+    if (bulkFU.phase === 'confirm') {
+      h += '<div style="font-size:13px;color:#374151;line-height:1.6">Are you sure you want to set the Followup Date of <b>'+bulkFU.total+' lead'+(bulkFU.total===1?'':'s')+'</b> to <b>'+esc(formatDateOnly(bulkFU.date))+'</b>?</div>';
+      if (bulkFU.overwrite > 0) {
+        h += '<div style="margin-top:10px;padding:8px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:12px;color:#92400e">&#9888;&#65039; This overwrites the current followup date on <b>'+bulkFU.overwrite+'</b> of these leads.</div>';
+      }
+      h += '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">';
+      h += '<button onclick="closeBulkFollowup()" style="padding:7px 16px;font-size:12px;border:1px solid #e5e7eb;background:#fff;color:#374151;border-radius:6px;cursor:pointer">Cancel</button>';
+      h += '<button onclick="confirmBulkFollowup()" style="padding:7px 16px;font-size:12px;border:none;background:#111827;color:#fff;border-radius:6px;cursor:pointer;font-weight:600">Confirm</button>';
+      h += '</div>';
+
+    } else if (bulkFU.phase === 'running') {
+      var bfPct = bulkFU.total ? Math.round(bulkFU.done / bulkFU.total * 100) : 0;
+      h += '<div id="bulkFuText" style="font-size:13px;color:#374151;text-align:center">Updated '+bulkFU.done+' / '+bulkFU.total+' leads</div>';
+      h += '<div style="margin-top:12px;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden">';
+      h += '<div id="bulkFuBar" style="height:100%;width:'+bfPct+'%;background:#4f46e5;border-radius:4px;transition:width 0.3s"></div></div>';
+      h += '<div style="font-size:11px;color:#9ca3af;text-align:center;margin-top:10px">Please don\'t close this tab while updating&hellip;</div>';
+
+    } else if (bulkFU.phase === 'done') {
+      h += '<div class="bug-success">&#9989; Followup date set to '+esc(formatDateOnly(bulkFU.date))+' for '+bulkFU.total+' lead'+(bulkFU.total===1?'':'s')+'</div>';
+      h += '<div style="text-align:center;margin-top:8px;padding-bottom:8px"><button onclick="closeBulkFollowup()" style="padding:8px 24px;background:#111827;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer">Done</button></div>';
+
+    } else { // error
+      h += '<div style="padding:10px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:12px;color:#b91c1c"><b>Update failed:</b> '+esc(bulkFU.error)+'</div>';
+      h += '<div style="font-size:12px;color:#6b7280;margin-top:10px">'+bulkFU.done+' of '+bulkFU.total+' leads were updated before the error; the rest are unchanged. Re-apply the filter and try again for the remaining leads.</div>';
+      h += '<div style="text-align:center;margin-top:16px"><button onclick="closeBulkFollowup()" style="padding:8px 24px;background:#111827;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer">Close</button></div>';
+    }
+
+    h += '</div></div></div>';
+  }
+
   // Floating Bug Report Button
   if (currentUser) {
     h += '<button class="bug-btn" onclick="openBugForm()">&#128027; Report Bug</button>';

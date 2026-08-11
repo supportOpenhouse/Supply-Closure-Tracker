@@ -150,7 +150,21 @@ function _render() {
   const pageEnd = pageStart + PAGE_SIZE;
   const pageRows = filtered.slice(pageStart, pageEnd);
 
-  h += '<span style="font-size:10px;color:#9ca3af;margin-left:auto">'+filtered.length+' results &middot; Page '+state.page+'/'+Math.max(totalPages,1)+'</span>';
+  // Bulk followup date (admin-only) — sits left of the results count.
+  // Enabled only when a filter is applied, so it can never hit the full dataset.
+  var showBulkFU = currentUser && currentUser.role === 'admin';
+  if (showBulkFU) {
+    // Real filters only — sortCol alone (part of hasFilters) still shows the
+    // whole dataset, and bulk must never be able to hit every lead at once.
+    var bulkFiltersOn = state.search || state.cityFilter !== "All" || state.statusFilter.length > 0 || state.pocFilter.length > 0 || state.sourceFilter !== "All" || state.affordableFilter !== "All" || state.dateFilter !== "all" || state.followupDateFilter.length > 0 || state.negFloorFilter;
+    var bulkOn = bulkFiltersOn && filtered.length > 0;
+    var bulkReady = bulkOn && state.bulkFollowupDate;
+    h += '<span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px"'+(bulkOn?'':' title="Apply a filter to enable bulk followup update"')+'>';
+    h += '<input type="date" value="'+esc(state.bulkFollowupDate)+'" onchange="setBulkFollowupDate(this.value)"'+(bulkOn?'':' disabled')+' style="padding:2px 6px;font-size:10px;border:1px solid #e5e7eb;border-radius:4px;color:#374151'+(bulkOn?'':';opacity:0.5')+'">';
+    h += '<button onclick="openBulkFollowup()"'+(bulkReady?'':' disabled')+' style="padding:3px 8px;border-radius:5px;font-size:10px;cursor:'+(bulkReady?'pointer':'default')+';border:1px solid '+(bulkReady?'#c7d2fe':'#e5e7eb')+';background:'+(bulkReady?'#eef2ff':'#f9fafb')+';color:'+(bulkReady?'#4338ca':'#9ca3af')+';font-weight:600;transition:all 0.15s">Set Followup</button>';
+    h += '</span>';
+  }
+  h += '<span style="font-size:10px;color:#9ca3af'+(showBulkFU?'':';margin-left:auto')+'">'+filtered.length+' results &middot; Page '+state.page+'/'+Math.max(totalPages,1)+'</span>';
   h += '<span id="lastUpdated" style="font-size:9px;color:#d1d5db">'+(lastRefreshed ? lastRefreshed : '')+'</span>';
   h += '<button onclick="refreshData()" style="padding:3px 8px;border-radius:5px;font-size:10px;cursor:pointer;border:1px solid #e5e7eb;background:#f9fafb;color:#6b7280;transition:all 0.15s">&#x21bb;</button>';
   if (currentUser && currentUser.role === 'admin') {
