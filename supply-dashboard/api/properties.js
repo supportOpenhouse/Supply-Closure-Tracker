@@ -52,14 +52,17 @@ let societyCache = { map: null, fetchedAt: 0 };
 const SOCIETY_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const normSociety = (s) => (s || "").toString().trim().toLowerCase().replace(/\s+/g, " ");
 
-async function getAffordableMap(sql) {
+async function getSocietyMap(sql) {
   const now = Date.now();
   if (societyCache.map && (now - societyCache.fetchedAt) < SOCIETY_CACHE_TTL) {
     return societyCache.map;
   }
-  const rows = await sql`SELECT society_name, affordable FROM master_societies`;
+  const rows = await sql`SELECT society_name, affordable, micro_market FROM master_societies`;
   const map = new Map();
-  rows.forEach(s => { const key = normSociety(s.society_name); if (key) map.set(key, s.affordable === true); });
+  rows.forEach(s => {
+    const key = normSociety(s.society_name);
+    if (key) map.set(key, { affordable: s.affordable === true, microMarket: (s.micro_market || "").trim() });
+  });
   societyCache = { map, fetchedAt: now };
   return map;
 }
@@ -152,7 +155,7 @@ module.exports = async function handler(req, res) {
 
     // Steps 1–3 fetch independent data — run them in parallel so total latency
     // is the slowest call, not the sum of all of them.
-    const [rows, legacyData, edits, affordableMap, ohPricing] = await Promise.all([
+    const [rows, legacyData, edits, societyMap, ohPricing] = await Promise.all([
       timed("live_query", () => sql`
         SELECT
           uid, source, demand_price,
@@ -185,7 +188,7 @@ module.exports = async function handler(req, res) {
       timed("legacy_sheet", () => getLegacyData(), timings),
       timed("legacy_edits", () => sql`SELECT uid, field, value, updated_at FROM legacy_edits`, timings)
         .catch((e) => { console.error("[properties] legacy_edits failed:", e.message); return []; }),
-      timed("master_societies", () => getAffordableMap(sql), timings)
+      timed("master_societies", () => getSocietyMap(sql), timings)
         .catch((e) => { console.error("[properties] master_societies failed:", e.message); return new Map(); }),
       timed("oh_pricing", () => getOhPricing(), timings)
         .catch((e) => { console.error("[properties] oh_pricing failed:", e.message); return { priceByKey: new Map(), areasBySociety: new Map() }; }),
@@ -277,10 +280,12 @@ module.exports = async function handler(req, res) {
     // Merge live + legacy.
     const allProperties = [...liveProperties, ...legacyWithEdits];
 
-    // Flag affordable societies, and match OH Price from the oh_pricing DB.
+    // Flag affordable societies, attach micromarket (both from master_societies),
+    // and match OH Price from the oh_pricing DB.
     allProperties.forEach(p => {
-      const key = normSociety(p.society);
-      p.affordable = affordableMap.has(key) ? affordableMap.get(key) : false;
+      const info = societyMap.get(normSociety(p.society));
+      p.affordable = info ? info.affordable : false;
+      p.microMarket = info ? info.microMarket : "";
       p.ohPrice = computeOhPrice(p, ohPricing);
     });
 

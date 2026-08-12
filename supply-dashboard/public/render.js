@@ -76,6 +76,29 @@ function _render() {
   h += '<select onchange="updateFilter(\'cityFilter\',this.value)"><option value="All">All Cities</option>';
   cities.filter(c=>c!=="All").sort().forEach(c => { h += '<option value="'+esc(c)+'"'+(state.cityFilter===c?' selected':'')+'>'+esc(c)+'</option>'; });
   h += '</select>';
+  // Micromarket multi-select — options cascade off the selected city:
+  // a chosen city narrows the list to its micromarkets, "All Cities" shows every one.
+  h += '<div class="ms-wrap">';
+  h += '<div class="ms-btn" onclick="event.stopPropagation();toggleMs(\'micromarket\')">';
+  h += state.microMarketFilter.length === 0 ? 'All Micromarkets' : 'Micromarket';
+  if (state.microMarketFilter.length > 0) h += ' <span class="ms-count">'+state.microMarketFilter.length+'</span>';
+  h += ' &#9662;</div>';
+  if (state.msOpen === 'micromarket') {
+    var mmSource = state.cityFilter === "All" ? DATA : DATA.filter(function(p){ return p.city === state.cityFilter; });
+    var mms = [...new Set(mmSource.map(function(p){ return (p.microMarket || "").trim(); }).filter(Boolean))].sort(function(a,b){ return a.localeCompare(b); });
+    h += '<div class="ms-drop" onclick="event.stopPropagation()">';
+    var mmBlankOn = state.microMarketFilter.indexOf("_blank_") >= 0;
+    h += '<div class="ms-item" onclick="toggleMsItem(\'microMarketFilter\',\'_blank_\')">';
+    h += '<div class="ms-check'+(mmBlankOn?' on':'')+'">'+(mmBlankOn?'&#10003;':'')+'</div>(Blank)</div>';
+    mms.forEach(function(m) {
+      var on = state.microMarketFilter.indexOf(m) >= 0;
+      h += '<div class="ms-item" onclick="toggleMsItem(\'microMarketFilter\',\''+esc(m)+'\')">';
+      h += '<div class="ms-check'+(on?' on':'')+'">'+(on?'&#10003;':'')+'</div>'+esc(m)+'</div>';
+    });
+    if (state.microMarketFilter.length > 0) h += '<div class="ms-clear" onclick="clearMs(\'microMarketFilter\')">Clear all</div>';
+    h += '</div>';
+  }
+  h += '</div>';
   // Status multi-select
   h += '<div class="ms-wrap">';
   h += '<div class="ms-btn" onclick="event.stopPropagation();toggleMs(\'status\')">';
@@ -140,7 +163,7 @@ function _render() {
     h += '</div>';
   }
   h += '</div>';
-  var hasFilters = state.search || state.cityFilter !== "All" || state.statusFilter.length > 0 || state.pocFilter.length > 0 || state.sourceFilter !== "All" || state.sortCol || state.dateFilter !== "all" || state.followupDateFilter.length > 0 || state.negFloorFilter;
+  var hasFilters = state.search || state.cityFilter !== "All" || state.statusFilter.length > 0 || state.pocFilter.length > 0 || state.microMarketFilter.length > 0 || state.sourceFilter !== "All" || state.sortCol || state.dateFilter !== "all" || state.followupDateFilter.length > 0 || state.negFloorFilter;
   if (hasFilters) {
     h += '<button onclick="clearAllFilters()" style="padding:3px 8px;border-radius:5px;font-size:10px;cursor:pointer;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;transition:all 0.15s;font-weight:500">&times; Clear</button>';
   }
@@ -156,7 +179,7 @@ function _render() {
   if (showBulkFU) {
     // Real filters only — sortCol alone (part of hasFilters) still shows the
     // whole dataset, and bulk must never be able to hit every lead at once.
-    var bulkFiltersOn = state.search || state.cityFilter !== "All" || state.statusFilter.length > 0 || state.pocFilter.length > 0 || state.sourceFilter !== "All" || state.affordableFilter !== "All" || state.dateFilter !== "all" || state.followupDateFilter.length > 0 || state.negFloorFilter;
+    var bulkFiltersOn = state.search || state.cityFilter !== "All" || state.statusFilter.length > 0 || state.pocFilter.length > 0 || state.microMarketFilter.length > 0 || state.sourceFilter !== "All" || state.affordableFilter !== "All" || state.dateFilter !== "all" || state.followupDateFilter.length > 0 || state.negFloorFilter;
     var bulkOn = bulkFiltersOn && filtered.length > 0;
     var bulkReady = bulkOn && state.bulkFollowupDate;
     h += '<span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px"'+(bulkOn?'':' title="Apply a filter to enable bulk followup update"')+'>';

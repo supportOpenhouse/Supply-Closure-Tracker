@@ -39,6 +39,7 @@ function clearAllFilters() {
   state.cityFilter = "All";
   state.statusFilter = [];
   state.pocFilter = [];
+  state.microMarketFilter = [];
   state.sourceFilter = "All";
   state.dateFilter = "all";
   state.dateFrom = "";
@@ -152,6 +153,15 @@ function updateSearch(v) {
 }
 function updateFilter(key, v) {
   state[key] = v;
+  // Cascade: changing the city drops any selected micromarkets that don't
+  // exist in the newly selected city ("_blank_" is city-agnostic and stays).
+  if (key === "cityFilter" && state.microMarketFilter.length > 0) {
+    var mmValid = new Set(
+      (v === "All" ? DATA : DATA.filter(function(p){ return p.city === v; }))
+        .map(function(p){ return (p.microMarket || "").trim(); }).filter(Boolean)
+    );
+    state.microMarketFilter = state.microMarketFilter.filter(function(m){ return m === "_blank_" || mmValid.has(m); });
+  }
   state.page = 1;
   try { render(); } catch(e) { console.error("Render error on filter:", e); }
 }

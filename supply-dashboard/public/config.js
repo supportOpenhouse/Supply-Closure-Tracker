@@ -48,6 +48,7 @@ let state = {
   cityFilter: "All",
   statusFilter: [],
   pocFilter: [],
+  microMarketFilter: [], // multi-select; options cascade off cityFilter
   sourceFilter: "All",
   affordableFilter: "All",
   negFloorFilter: false, // show only "negative-value" floors (Top/Ground/13)

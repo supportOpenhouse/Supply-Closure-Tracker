@@ -337,6 +337,13 @@ function getFiltered() {
       const statusHit   = state.statusFilter.indexOf(getStatus(p)) !== -1;
       if (!priorityHit && !statusHit) return false;
     }
+    // Micromarket: array filter with blank support (value comes from the
+    // master_societies join in api/properties.js)
+    if (state.microMarketFilter.length > 0) {
+      var mm = (p.microMarket || "").trim();
+      if (state.microMarketFilter.indexOf("_blank_") >= 0 && mm === "") { /* matches blank */ }
+      else if (state.microMarketFilter.indexOf(mm) === -1) return false;
+    }
     // POC: array filter with blank support
     if (state.pocFilter.length > 0) {
       var poc = (p.assignedBy || "").trim();
