@@ -101,27 +101,37 @@ function renderOverlays() {
         h += '<div class="admin-row" style="color:#9ca3af;justify-content:center">No managers found</div>';
       }
       teamMgrs.forEach(function(t, mi) {
+        var editing = !!teamEditing[(t.email || '').toLowerCase()];
         h += '<div class="admin-row" style="flex-direction:column;align-items:flex-start;gap:6px">';
-        h += '<div><span class="email">'+esc(t.name)+'</span> <span style="font-size:11px;color:#6b7280">manages '+t.employees.length+'</span></div>';
 
-        // Current members — removable chips
+        // Header: name + count + Edit/Done toggle
+        h += '<div style="display:flex;align-items:center;gap:10px;width:100%">';
+        h += '<div><span class="email">'+esc(t.name)+'</span> <span style="font-size:11px;color:#6b7280">manages '+t.employees.length+'</span></div>';
+        if (t.email) {
+          h += '<button onclick="toggleTeamEdit('+mi+')" style="margin-left:auto;padding:3px 12px;font-size:11px;border:1px solid '+(editing?'#111827':'#e5e7eb')+';background:'+(editing?'#111827':'#fff')+';color:'+(editing?'#fff':'#374151')+';border-radius:5px;cursor:pointer;font-weight:600">'+(editing?'Done':'Edit')+'</button>';
+        } else {
+          h += '<span style="margin-left:auto;font-size:10px;color:#dc2626">No email — cannot edit</span>';
+        }
+        h += '</div>';
+
+        // Members — chips get a ✕ remover only in edit mode
         h += '<div style="display:flex;flex-wrap:wrap;gap:5px;padding-left:8px">';
         if (t.employees.length === 0) h += '<span style="font-size:11px;color:#9ca3af">No members yet</span>';
         t.employees.forEach(function(e, ei) {
-          h += '<span style="display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:12px;padding:2px 5px 2px 9px;font-size:11px;color:#374151">'+esc(e);
-          h += '<span onclick="removeTeamMember('+mi+','+ei+')" title="Remove" style="cursor:pointer;color:#dc2626;font-weight:700;padding:0 3px;line-height:1">&times;</span></span>';
+          var pad = editing ? '2px 5px 2px 9px' : '2px 9px';
+          h += '<span style="display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:12px;padding:'+pad+';font-size:11px;color:#374151">'+esc(e);
+          if (editing) h += '<span onclick="removeTeamMember('+mi+','+ei+')" title="Remove" style="cursor:pointer;color:#dc2626;font-weight:700;padding:0 3px;line-height:1">&times;</span>';
+          h += '</span>';
         });
         h += '</div>';
 
-        // Add via dropdown — candidates = all names not already on this team (and not the manager)
-        var already = {};
-        t.employees.forEach(function(e){ already[e.toLowerCase()] = true; });
-        var mgrLower = (t.name || '').toLowerCase();
-        var selId = 'teamAdd_'+mi;
-        h += '<div style="display:flex;gap:6px;align-items:center;padding-left:8px">';
-        if (!t.email) {
-          h += '<span style="font-size:10px;color:#dc2626">No email on this user — cannot edit their team</span>';
-        } else {
+        // Add dropdown — only in edit mode
+        if (editing && t.email) {
+          var already = {};
+          t.employees.forEach(function(e){ already[e.toLowerCase()] = true; });
+          var mgrLower = (t.name || '').toLowerCase();
+          var selId = 'teamAdd_'+mi;
+          h += '<div style="display:flex;gap:6px;align-items:center;padding-left:8px">';
           h += '<select id="'+selId+'" class="role-select" style="max-width:220px"><option value="">Choose user…</option>';
           teamNames.forEach(function(n){
             if (already[n.toLowerCase()] || n.toLowerCase() === mgrLower) return;
@@ -129,8 +139,8 @@ function renderOverlays() {
           });
           h += '</select>';
           h += '<button onclick="addTeamMember('+mi+',\''+selId+'\')" style="padding:3px 10px;font-size:11px;border:1px solid #10b981;background:#ecfdf5;color:#065f46;border-radius:5px;cursor:pointer;font-weight:600">Add</button>';
+          h += '</div>';
         }
-        h += '</div>';
 
         h += '</div>';
       });

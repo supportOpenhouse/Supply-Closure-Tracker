@@ -45,6 +45,17 @@ async function loadTeam() {
 
 // Team Directory editing. Pass indices (not names) so employee names with
 // quotes never break the inline onclick — we look them up from adminTeam here.
+
+// Toggle a manager's row between view (plain chips) and edit (dropdown + ✕).
+function toggleTeamEdit(mgrIdx) {
+  var mgr = (adminTeam.managers || [])[mgrIdx];
+  if (!mgr || !mgr.email) return;
+  var key = mgr.email.toLowerCase();
+  if (teamEditing[key]) delete teamEditing[key];
+  else teamEditing[key] = true;
+  renderOverlays();
+}
+
 async function addTeamMember(mgrIdx, selId) {
   var mgr = (adminTeam.managers || [])[mgrIdx];
   if (!mgr || !mgr.email) { alert("This manager has no email — cannot edit their team."); return; }

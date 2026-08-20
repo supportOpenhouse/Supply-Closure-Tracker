@@ -37,6 +37,7 @@ let currentUser = null; // { email, name, role }
 let adminUsers = [];
 let adminRequests = [];
 let adminTeam = { managers: [], allNames: [] };
+let teamEditing = {}; // manager email (lowercased) -> true while its team is in edit mode
 let showAdminPanel = false;
 let adminTab = "users"; // "users" | "team" | "bugs"
 let showBugForm = false;

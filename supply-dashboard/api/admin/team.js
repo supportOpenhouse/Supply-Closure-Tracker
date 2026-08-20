@@ -32,9 +32,15 @@ module.exports = async function handler(req, res) {
 
   if (req.method === "GET") {
     try {
-      // managed_team IS NOT NULL keeps a manager visible even after their team
-      // is emptied, so it can still be edited (re-added to).
-      const rows = await sql`SELECT name, email, managed_team FROM users WHERE managed_team IS NOT NULL`;
+      // Managers = dashboard_users with role 'manager', joined to their `users`
+      // row for managed_team. Admins and everyone else never appear here, so no
+      // one but managers shows employees under them.
+      const rows = await sql`
+        SELECT u.name, u.email, u.managed_team
+        FROM users u
+        JOIN dashboard_users du ON LOWER(du.email) = LOWER(u.email)
+        WHERE du.role = 'manager'
+      `;
       const managers = [];
       rows.forEach(r => {
         const name = (r.name || "").trim();
@@ -43,8 +49,16 @@ module.exports = async function handler(req, res) {
       });
       managers.sort((a, b) => a.name.localeCompare(b.name));
 
-      // Every named user is a candidate employee for the add dropdown.
-      const allRows = await sql`SELECT DISTINCT name FROM users WHERE name IS NOT NULL AND btrim(name) <> '' ORDER BY name`;
+      // Dropdown candidates = users who are NOT managers or admins (viewers,
+      // commenters, or people with no dashboard account at all).
+      const allRows = await sql`
+        SELECT DISTINCT u.name
+        FROM users u
+        LEFT JOIN dashboard_users du ON LOWER(du.email) = LOWER(u.email)
+        WHERE u.name IS NOT NULL AND btrim(u.name) <> ''
+          AND (du.role IS NULL OR du.role NOT IN ('manager', 'admin'))
+        ORDER BY u.name
+      `;
       const allNames = allRows.map(u => (u.name || "").trim()).filter(Boolean);
 
       return res.status(200).json({ managers, allNames });
@@ -64,6 +78,12 @@ module.exports = async function handler(req, res) {
     if (!emp) return res.status(400).json({ error: "employee name is empty" });
 
     try {
+      // Enforce "managers only" server-side, not just in the UI.
+      const roleRows = await sql`SELECT role FROM dashboard_users WHERE LOWER(email) = ${target} LIMIT 1`;
+      if (roleRows.length === 0 || roleRows[0].role !== "manager") {
+        return res.status(400).json({ error: "Target user is not a manager" });
+      }
+
       const rows = await sql`SELECT managed_team FROM users WHERE LOWER(email) = ${target} LIMIT 1`;
       if (rows.length === 0) return res.status(404).json({ error: "Manager not found" });
 
