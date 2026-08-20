@@ -23,7 +23,7 @@ function renderOverlays() {
     h += '<span onclick="switchAdminTab(\'users\')" style="padding:8px 16px;font-size:13px;font-weight:'+(adminTab==='users'?'600':'400')+';cursor:pointer;border-bottom:2px solid '+(adminTab==='users'?'#111827':'transparent')+';color:'+(adminTab==='users'?'#111827':'#6b7280')+'">Users';
     if (pending.length > 0) h += ' <span class="pending-badge">'+pending.length+'</span>';
     h += '</span>';
-    h += '<span onclick="switchAdminTab(\'team\')" style="padding:8px 16px;font-size:13px;font-weight:'+(adminTab==='team'?'600':'400')+';cursor:pointer;border-bottom:2px solid '+(adminTab==='team'?'#111827':'transparent')+';color:'+(adminTab==='team'?'#111827':'#6b7280')+'">Team Directory ('+adminTeam.length+')</span>';
+    h += '<span onclick="switchAdminTab(\'team\')" style="padding:8px 16px;font-size:13px;font-weight:'+(adminTab==='team'?'600':'400')+';cursor:pointer;border-bottom:2px solid '+(adminTab==='team'?'#111827':'transparent')+';color:'+(adminTab==='team'?'#111827':'#6b7280')+'">Team Directory ('+((adminTeam.managers||[]).length)+')</span>';
     const openBugs = adminBugs.filter(b => b.status === 'open' || b.status === 'in_progress').length;
     h += '<span onclick="switchAdminTab(\'bugs\')" style="padding:8px 16px;font-size:13px;font-weight:'+(adminTab==='bugs'?'600':'400')+';cursor:pointer;border-bottom:2px solid '+(adminTab==='bugs'?'#111827':'transparent')+';color:'+(adminTab==='bugs'?'#111827':'#6b7280')+'">&#128027; Bugs';
     if (openBugs > 0) h += ' <span class="pending-badge">'+openBugs+'</span>';
@@ -89,22 +89,49 @@ function renderOverlays() {
 
     } else if (adminTab === 'team') {
       h += '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:#0369a1">';
-      h += '<b>How visibility works:</b> Each user sees records where their name appears in Assigned By, plus records of anyone in their <code>managed_team</code> (in the <code>users</code> table). Admins see everything. This view is read-only — edit <code>managed_team</code> in the database.';
+      h += '<b>How visibility works:</b> Each user sees records where their name appears in Assigned By, plus records of anyone in their <code>managed_team</code> (in the <code>users</code> table). Admins see everything. Add or remove team members below.';
       h += '</div>';
+
+      var teamMgrs = (adminTeam && adminTeam.managers) || [];
+      var teamNames = (adminTeam && adminTeam.allNames) || [];
 
       h += '<div class="admin-section"><h3>Team Directory</h3>';
       h += '<div class="admin-list">';
-      if (adminTeam.length === 0) {
+      if (teamMgrs.length === 0) {
         h += '<div class="admin-row" style="color:#9ca3af;justify-content:center">No managers found</div>';
       }
-      adminTeam.forEach(t => {
-        h += '<div class="admin-row" style="flex-direction:column;align-items:flex-start;gap:4px">';
+      teamMgrs.forEach(function(t, mi) {
+        h += '<div class="admin-row" style="flex-direction:column;align-items:flex-start;gap:6px">';
         h += '<div><span class="email">'+esc(t.name)+'</span> <span style="font-size:11px;color:#6b7280">manages '+t.employees.length+'</span></div>';
-        h += '<div style="font-size:12px;color:#374151;padding-left:8px">';
-        t.employees.forEach((e, i) => {
-          h += (i > 0 ? ', ' : '') + esc(e);
+
+        // Current members — removable chips
+        h += '<div style="display:flex;flex-wrap:wrap;gap:5px;padding-left:8px">';
+        if (t.employees.length === 0) h += '<span style="font-size:11px;color:#9ca3af">No members yet</span>';
+        t.employees.forEach(function(e, ei) {
+          h += '<span style="display:inline-flex;align-items:center;gap:4px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:12px;padding:2px 5px 2px 9px;font-size:11px;color:#374151">'+esc(e);
+          h += '<span onclick="removeTeamMember('+mi+','+ei+')" title="Remove" style="cursor:pointer;color:#dc2626;font-weight:700;padding:0 3px;line-height:1">&times;</span></span>';
         });
         h += '</div>';
+
+        // Add via dropdown — candidates = all names not already on this team (and not the manager)
+        var already = {};
+        t.employees.forEach(function(e){ already[e.toLowerCase()] = true; });
+        var mgrLower = (t.name || '').toLowerCase();
+        var selId = 'teamAdd_'+mi;
+        h += '<div style="display:flex;gap:6px;align-items:center;padding-left:8px">';
+        if (!t.email) {
+          h += '<span style="font-size:10px;color:#dc2626">No email on this user — cannot edit their team</span>';
+        } else {
+          h += '<select id="'+selId+'" class="role-select" style="max-width:220px"><option value="">Choose user…</option>';
+          teamNames.forEach(function(n){
+            if (already[n.toLowerCase()] || n.toLowerCase() === mgrLower) return;
+            h += '<option value="'+esc(n)+'">'+esc(n)+'</option>';
+          });
+          h += '</select>';
+          h += '<button onclick="addTeamMember('+mi+',\''+selId+'\')" style="padding:3px 10px;font-size:11px;border:1px solid #10b981;background:#ecfdf5;color:#065f46;border-radius:5px;cursor:pointer;font-weight:600">Add</button>';
+        }
+        h += '</div>';
+
         h += '</div>';
       });
       h += '</div></div>';

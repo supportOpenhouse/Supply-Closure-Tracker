@@ -1,15 +1,26 @@
 const { getDB } = require("../_db");
 const { requireAuth } = require("../_auth");
 
-// Read-only Team Directory: lists managers (rows in `users` with a non-empty
-// managed_team array) and their direct employees. There is no longer a
-// dashboard-side editor — managed_team is managed outside this app.
+// managed_team may come back as a native array (jsonb/text[] pre-parsed by the
+// driver) or a JSON string — normalize to a clean array of trimmed names.
+function parseTeam(raw) {
+  let arr = [];
+  try {
+    arr = Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw) : []);
+  } catch {
+    arr = [];
+  }
+  return (arr || []).map(n => (n || "").toString().trim()).filter(Boolean);
+}
+
+// Team Directory: managers are `users` rows with a managed_team. Admin-only.
+// GET  → { managers:[{name,email,employees[]}], allNames:[...] }
+// PATCH → add/remove one employee name from a manager's managed_team.
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, PATCH, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
   const user = await requireAuth(req, res);
   if (!user) return;
@@ -19,27 +30,59 @@ module.exports = async function handler(req, res) {
 
   const sql = getDB();
 
-  try {
-    const rows = await sql`SELECT name, managed_team FROM users WHERE managed_team IS NOT NULL`;
-    const managers = [];
-    rows.forEach(r => {
-      const name = (r.name || "").trim();
-      if (!name) return;
-      const raw = r.managed_team;
-      let arr = [];
-      try {
-        arr = Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw) : []);
-      } catch {
-        arr = [];
-      }
-      const employees = (arr || []).map(n => (n || "").toString().trim()).filter(Boolean);
-      if (employees.length === 0) return;
-      managers.push({ name, employees });
-    });
-    managers.sort((a, b) => a.name.localeCompare(b.name));
-    return res.status(200).json(managers);
-  } catch (err) {
-    console.error("Team lookup failed:", err.message);
-    return res.status(500).json({ error: "Failed to load team: " + err.message });
+  if (req.method === "GET") {
+    try {
+      // managed_team IS NOT NULL keeps a manager visible even after their team
+      // is emptied, so it can still be edited (re-added to).
+      const rows = await sql`SELECT name, email, managed_team FROM users WHERE managed_team IS NOT NULL`;
+      const managers = [];
+      rows.forEach(r => {
+        const name = (r.name || "").trim();
+        if (!name) return;
+        managers.push({ name, email: (r.email || "").trim(), employees: parseTeam(r.managed_team) });
+      });
+      managers.sort((a, b) => a.name.localeCompare(b.name));
+
+      // Every named user is a candidate employee for the add dropdown.
+      const allRows = await sql`SELECT DISTINCT name FROM users WHERE name IS NOT NULL AND btrim(name) <> '' ORDER BY name`;
+      const allNames = allRows.map(u => (u.name || "").trim()).filter(Boolean);
+
+      return res.status(200).json({ managers, allNames });
+    } catch (err) {
+      console.error("Team lookup failed:", err.message);
+      return res.status(500).json({ error: "Failed to load team: " + err.message });
+    }
   }
+
+  if (req.method === "PATCH") {
+    const { managerEmail, employee, action } = req.body || {};
+    if (!managerEmail || !employee || (action !== "add" && action !== "remove")) {
+      return res.status(400).json({ error: "managerEmail, employee, and action ('add'|'remove') are required" });
+    }
+    const target = String(managerEmail).trim().toLowerCase();
+    const emp = String(employee).trim();
+    if (!emp) return res.status(400).json({ error: "employee name is empty" });
+
+    try {
+      const rows = await sql`SELECT managed_team FROM users WHERE LOWER(email) = ${target} LIMIT 1`;
+      if (rows.length === 0) return res.status(404).json({ error: "Manager not found" });
+
+      let team = parseTeam(rows[0].managed_team);
+      const has = team.some(n => n.toLowerCase() === emp.toLowerCase());
+      if (action === "add") {
+        if (!has) team.push(emp);
+      } else {
+        team = team.filter(n => n.toLowerCase() !== emp.toLowerCase());
+      }
+
+      // Store as a JSON string — works whether managed_team is jsonb or text.
+      await sql`UPDATE users SET managed_team = ${JSON.stringify(team)} WHERE LOWER(email) = ${target}`;
+      return res.status(200).json({ success: true, employees: team });
+    } catch (err) {
+      console.error("Team update failed:", err.message);
+      return res.status(500).json({ error: "Failed to update team: " + err.message });
+    }
+  }
+
+  return res.status(405).json({ error: "Method not allowed" });
 };

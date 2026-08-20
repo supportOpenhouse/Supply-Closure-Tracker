@@ -43,6 +43,45 @@ async function loadTeam() {
   } catch {}
 }
 
+// Team Directory editing. Pass indices (not names) so employee names with
+// quotes never break the inline onclick — we look them up from adminTeam here.
+async function addTeamMember(mgrIdx, selId) {
+  var mgr = (adminTeam.managers || [])[mgrIdx];
+  if (!mgr || !mgr.email) { alert("This manager has no email — cannot edit their team."); return; }
+  var sel = document.getElementById(selId);
+  var employee = sel ? sel.value : "";
+  if (!employee) return;
+  await patchTeam(mgr.email, employee, "add");
+}
+
+async function removeTeamMember(mgrIdx, empIdx) {
+  var mgr = (adminTeam.managers || [])[mgrIdx];
+  if (!mgr || !mgr.email) return;
+  var employee = (mgr.employees || [])[empIdx];
+  if (!employee) return;
+  if (!confirm("Remove " + employee + " from " + mgr.name + "'s team?")) return;
+  await patchTeam(mgr.email, employee, "remove");
+}
+
+async function patchTeam(managerEmail, employee, action) {
+  try {
+    const res = await fetch("/api/admin/team", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ managerEmail: managerEmail, employee: employee, action: action })
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      alert("Failed: " + (e.error || res.status));
+      return;
+    }
+    await loadTeam();
+    renderOverlays();
+  } catch (e) {
+    alert("Error: " + e.message);
+  }
+}
+
 async function addUser() {
   const email = document.getElementById("addEmail").value.trim();
   const role = document.getElementById("addRole").value;
