@@ -58,7 +58,7 @@ function _render() {
   // Date filter bar
   h += '<div class="filters" style="gap:6px;padding:6px 20px;border-bottom:1px solid #f3f4f6">';
   h += '<span style="font-size:10px;color:#9ca3af;font-weight:600">DATE:</span>';
-  var dBtns = [{k:"all",l:"All"},{k:"yesterday",l:"Yesterday"},{k:"week",l:"This Week"},{k:"month",l:"This Month"},{k:"custom",l:"Custom"}];
+  var dBtns = [{k:"all",l:"All"},{k:"today",l:"Today"},{k:"yesterday",l:"Yesterday"},{k:"week",l:"This Week"},{k:"month",l:"This Month"},{k:"custom",l:"Custom"}];
   dBtns.forEach(function(b){
     var active = state.dateFilter === b.k;
     h += '<button onclick="setDateFilter(\''+b.k+'\')" style="padding:2px 8px;font-size:10px;border-radius:4px;cursor:pointer;border:1px solid '+(active?'#111827':'#e5e7eb')+';background:'+(active?'#111827':'#fff')+';color:'+(active?'#fff':'#6b7280')+';font-weight:'+(active?'600':'400')+';transition:all 0.15s">'+b.l+'</button>';

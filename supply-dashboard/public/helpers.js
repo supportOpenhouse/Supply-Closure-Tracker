@@ -315,7 +315,10 @@ function getFiltered() {
       var now = new Date();
       var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-      if (state.dateFilter === "yesterday") {
+      if (state.dateFilter === "today") {
+        var tmrw = new Date(today); tmrw.setDate(tmrw.getDate() + 1);
+        if (d < today || d >= tmrw) return false;
+      } else if (state.dateFilter === "yesterday") {
         var yest = new Date(today); yest.setDate(yest.getDate() - 1);
         if (d < yest || d >= today) return false;
       } else if (state.dateFilter === "week") {
