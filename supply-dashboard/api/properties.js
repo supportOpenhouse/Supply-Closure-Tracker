@@ -159,7 +159,7 @@ module.exports = async function handler(req, res) {
       timed("live_query", () => sql`
         SELECT
           uid, source, demand_price,
-          first_name, last_name, owner_broker_name,
+          first_name, last_name, owner_broker_name, cp_name,
           contact_no, city, locality, society_name, unit_no, floor, tower_no,
           configuration, area_sqft, bathrooms, balconies, gas_pipeline,
           parking, furnishing, furnishing_details, exit_facing,
@@ -390,6 +390,9 @@ function transformRow(r) {
     source: r.source || "",
     demandPrice: r.demand_price || "",
     ownerName,
+    // The channel partner who sourced the property (supply Form 1). Shown beside
+    // the seller so the sheet says who brought the lead, not just who owns it.
+    cpName: r.cp_name || "",
     contactNo: r.contact_no || "",
     city: r.city || "",
     locality: r.locality || "",

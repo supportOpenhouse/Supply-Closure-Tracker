@@ -37,7 +37,7 @@ function downloadCSV() {
     {hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},
     {hdr:"Config",key:"configuration"},{hdr:"Ask (Lakhs)",key:"demandPrice"},
     {hdr:"Area (Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},
-    {hdr:"Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},
+    {hdr:"CP Name",key:"cpName"},{hdr:"Seller Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},
     {hdr:"Status",fn:function(p){return (p.statusOverride||"New")}},
     {hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",fn:function(p){return getBalconyView(p)||p.balconyView||""}},
     {hdr:"POC",key:"assignedBy"},{hdr:"Offer Price",key:"offerPrice"},
