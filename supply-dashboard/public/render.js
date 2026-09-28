@@ -359,7 +359,11 @@ function _render() {
     // Expanded row
     if (isExp) {
       try {
-      h += '<tr class="expand-row"><td colspan="' + colCount + '"><div class="expand-content">';
+      // Split the expanded row so the Notes box sits under Config → Pricing Comments,
+      // with details + images to its left.
+      var notesFrom = COLS.findIndex(function(c){ return c.hdr === "Config"; });
+      var notesTo = COLS.findIndex(function(c){ return c.hdr === "Pricing Comments"; });
+      h += '<tr class="expand-row"><td colspan="' + notesFrom + '"><div class="expand-content">';
       h += '<div class="detail-tags">';
       const rate = getRatePerSqft(p);
       if (rate) h += '<span>Rate/sqft: <b>\u20B9'+rate+'</b></span>';
@@ -438,10 +442,12 @@ function _render() {
         h += '<div style="font-size:11px;color:#9ca3af;font-style:italic">Visit not completed \u2014 no images available</div>';
       }
 
-      // Notes thread (notes.js) — the only place comments are shown or added.
-      h += notesSection(p);
+      h += '</div></td>';
 
-      h += '</div></td></tr>';
+      // Notes thread (notes.js) — the only place comments are shown or added.
+      h += '<td colspan="' + (notesTo - notesFrom + 1) + '" class="expand-notes">' + notesSection(p) + '</td>';
+      if (colCount - notesTo - 1 > 0) h += '<td colspan="' + (colCount - notesTo - 1) + '"></td>';
+      h += '</tr>';
       } catch(expandErr) {
         h += '<tr class="expand-row"><td colspan="' + colCount + '" style="padding:12px 20px;color:#ef4444;font-size:12px">Error loading details: '+esc(expandErr.message)+'</td></tr>';
         console.error("Expand error for "+p.uid+":", expandErr);
