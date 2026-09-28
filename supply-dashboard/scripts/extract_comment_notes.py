@@ -7,6 +7,7 @@ Usage (from supply-dashboard/):
   python3 scripts/extract_comment_notes.py --test     # self-check, no DB
   python3 scripts/extract_comment_notes.py            # reads DB, prints table, writes CSV
   python3 scripts/extract_comment_notes.py --import   # ...and loads the notes into property_notes
+  add --with-legacy-sheet to also include legacy comments stored only in the Google Sheet
 
 DATABASE_URL comes from the environment or supply-dashboard/.env. Queries run
 through the `psql` CLI, so no Python DB driver is needed.
@@ -148,15 +149,13 @@ SHEET_KEYS = {
 
 def legacy_sheet():
     """Legacy leads (LEGACY-xxx) come from the Google Sheet the dashboard reads via
-    LEGACY_SHEET_URL. Returns [] when the URL isn't set (report-only runs)."""
-    url = os.environ.get("LEGACY_SHEET_URL")
-    if not url:
-        if "--import" in sys.argv:
-            raise SystemExit("--import needs LEGACY_SHEET_URL: without it, legacy comments that live only "
-                             "in the sheet would be missing from the notes table.")
-        print("LEGACY_SHEET_URL not set — legacy comments stored only in the sheet are not included.", file=sys.stderr)
+    LEGACY_SHEET_URL. Sidelined for now: only read with --with-legacy-sheet, so by
+    default legacy comments that live only in the sheet are not imported (legacy
+    comments edited on the dashboard, in legacy_edits, still are)."""
+    if "--with-legacy-sheet" not in sys.argv:
+        print("Legacy sheet skipped (pass --with-legacy-sheet to include it).", file=sys.stderr)
         return []
-    with urllib.request.urlopen(url) as res:
+    with urllib.request.urlopen(os.environ["LEGACY_SHEET_URL"]) as res:
         return json.load(res)
 
 

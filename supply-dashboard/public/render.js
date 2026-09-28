@@ -416,13 +416,17 @@ function _render() {
         h += '<div style="font-size:11px;color:#6b7280;margin-bottom:12px">Docs: '+p.documentsAvailable.map(function(d){return esc(d)}).join(' \u00B7 ')+'</div>';
       }
 
-      if (p.balconyDetails && p.balconyDetails.length > 0) {
-        h += '<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px">Balcony Views & Compass</div>';
+      var hasBalcony = p.balconyDetails && p.balconyDetails.length > 0;
+      if (hasBalcony || p.parkingImage) {
+        h += '<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px">'+(hasBalcony ? 'Balcony Views, Compass & Parking' : 'Parking')+'</div>';
         h += '<div class="img-strip">';
         if (p.exitCompassImage) {
           h += '<div style="min-width:100px;text-align:center"><img src="'+esc(p.exitCompassImage)+'" width="100" height="70" data-modal="'+esc(p.exitCompassImage)+'" onclick="event.stopPropagation();showModal(this)"><div style="font-size:10px;color:#6b7280;margin-top:3px">Exit Compass</div></div>';
         }
-        p.balconyDetails.forEach(function(b) {
+        if (p.parkingImage) {
+          h += '<div style="min-width:100px;text-align:center"><img src="'+esc(p.parkingImage)+'" width="100" height="70" data-modal="'+esc(p.parkingImage)+'" onclick="event.stopPropagation();showModal(this)"><div style="font-size:10px;color:#6b7280;margin-top:3px">Parking</div></div>';
+        }
+        (p.balconyDetails || []).forEach(function(b) {
           if (!b || !b.view_image) return;
           h += '<div class="img-card"><div style="display:flex;gap:4px">';
           h += '<img src="'+esc(b.view_image)+'" width="80" height="70" data-modal="'+esc(b.view_image)+'" onclick="event.stopPropagation();showModal(this)">';
