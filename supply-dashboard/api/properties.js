@@ -155,7 +155,7 @@ module.exports = async function handler(req, res) {
 
     // Steps 1–3 fetch independent data — run them in parallel so total latency
     // is the slowest call, not the sum of all of them.
-    const [rows, legacyData, edits, societyMap, ohPricing] = await Promise.all([
+    const [rows, legacyData, edits, societyMap, ohPricing, noteRows] = await Promise.all([
       timed("live_query", () => sql`
         SELECT
           uid, source, demand_price,
@@ -174,8 +174,7 @@ module.exports = async function handler(req, res) {
           balcony_details,
           exit_compass_image, documents_available,
           status_override, status_override_at,
-          offer_price, property_score, price_score, supply_dash_brokerage, poc_comments, rahool_comments,
-          prashant_comments, manager_comments,
+          offer_price, property_score, price_score, supply_dash_brokerage,
           poc_comments_at, rahool_comments_at,
           prashant_comments_at, manager_comments_at,
           pricing_comments, pricing_comments_at,
@@ -192,6 +191,12 @@ module.exports = async function handler(req, res) {
         .catch((e) => { console.error("[properties] master_societies failed:", e.message); return new Map(); }),
       timed("oh_pricing", () => getOhPricing(), timings)
         .catch((e) => { console.error("[properties] oh_pricing failed:", e.message); return { priceByKey: new Map(), areasBySociety: new Map() }; }),
+      // Latest note + count per thread, for the table cell preview.
+      timed("note_summaries", () => sql`
+        SELECT DISTINCT ON (uid) uid, note, author_name, created_at,
+               count(*) OVER (PARTITION BY uid) AS count
+        FROM property_notes WHERE deleted_at IS NULL
+        ORDER BY uid, created_at DESC, id DESC`, timings),
     ]);
 
     const liveProperties = rows.map(transformRow);
@@ -210,10 +215,6 @@ module.exports = async function handler(req, res) {
         "property_score": "propertyScore",
         "price_score": "priceScore",
         "supply_dash_brokerage": "supplyDashBrokerage",
-        "poc_comments": "pocComments",
-        "rahool_comments": "rahoolComments",
-        "prashant_comments": "prashantComments",
-        "manager_comments": "managerComments",
         "pricing_comments": "pricingComments",
         // Property fields (from edit modal)
         "society_name": "society",
@@ -282,7 +283,13 @@ module.exports = async function handler(req, res) {
 
     // Flag affordable societies, attach micromarket (both from master_societies),
     // and match OH Price from the oh_pricing DB.
+    const notesByUid = {};
+    noteRows.forEach(n => {
+      notesByUid[n.uid] = { count: Number(n.count), note: n.note, author: n.author_name, at: n.created_at };
+    });
+
     allProperties.forEach(p => {
+      p.notes = notesByUid[p.uid] || null; // latest note + count; the thread loads on expand
       const info = societyMap.get(normSociety(p.society));
       p.affordable = info ? info.affordable : false;
       p.microMarket = info ? info.microMarket : "";
@@ -443,10 +450,6 @@ function transformRow(r) {
     propertyScore: r.property_score || "",
     priceScore: r.price_score || "",
     supplyDashBrokerage: r.supply_dash_brokerage || "",
-    pocComments: r.poc_comments || "",
-    rahoolComments: r.rahool_comments || "",
-    prashantComments: r.prashant_comments || "",
-    managerComments: r.manager_comments || "",
     pocCommentsAt: r.poc_comments_at || "",
     rahoolCommentsAt: r.rahool_comments_at || "",
     prashantCommentsAt: r.prashant_comments_at || "",

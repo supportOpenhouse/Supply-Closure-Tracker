@@ -155,7 +155,7 @@ async function loadOptions() {
 function renderFilters() {
   const bar = document.getElementById("filterBar");
   let h = "";
-  h += '<input type="text" placeholder="Search by UID..." value="' + esc(state.uid) + '" oninput="state.uid=this.value;debouncedLoad()" style="width:150px">';
+  h += '<input type="text" placeholder="Search any lead eg: OHGD1709 Sahaj" value="' + esc(state.uid) + '" oninput="state.uid=this.value;debouncedLoad()" style="width:150px">';
   h += msDropdown("actions", "Action", filterOptions.actions, state.actions);
   h += msDropdown("categories", "Category", filterOptions.categories, state.categories);
   h += msDropdown("actor_emails", "Actor Email", filterOptions.actor_emails, state.actor_emails);

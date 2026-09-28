@@ -131,7 +131,7 @@ async function logout() {
 function renderFilters() {
   const bar = document.getElementById("filterBar");
   let h = "";
-  h += '<input type="text" placeholder="Search society, owner, UID…" value="' + esc(state.search) + '" oninput="state.search=this.value;renderTable()" style="width:220px">';
+  h += '<input type="text" placeholder="Search any lead eg: OHGD1709 Sahaj" value="' + esc(state.search) + '" oninput="state.search=this.value;renderTable()" style="width:220px">';
   h += msDropdown("cities", "City", options.cities, state.cities);
   h += msDropdown("pocs", "POC", options.pocs, state.pocs);
   const hasFilters = state.search || state.cities.length || state.pocs.length;

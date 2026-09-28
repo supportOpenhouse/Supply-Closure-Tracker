@@ -379,7 +379,7 @@ function _render() {
 
   // Filters
   h += '<div class="filters">';
-  h += '<input id="searchBox" value="'+esc(state.search)+'" placeholder="Search society, owner, UID..." oninput="updateSearch(this.value)">';
+  h += '<input id="searchBox" value="'+esc(state.search)+'" placeholder="Search any lead eg: OHGD1709 Sahaj" oninput="updateSearch(this.value)">';
   h += '<select onchange="updateFilter(\'cityFilter\',this.value)"><option value="All">All Cities</option>';
   cities.filter(c=>c!=="All").sort().forEach(c => { h += '<option value="'+esc(c)+'"'+(state.cityFilter===c?' selected':'')+'>'+esc(c)+'</option>'; });
   h += '</select>';

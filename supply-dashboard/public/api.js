@@ -30,6 +30,11 @@ async function fetchProperties() {
   }
 }
 
+function latestNote(p) {
+  var n = p.notes;
+  return n ? n.note + " — " + n.author + ", " + formatDateOnly(n.at) : "";
+}
+
 function downloadCSV() {
   var filtered = getFiltered();
   var cols = [
@@ -46,10 +51,7 @@ function downloadCSV() {
     {hdr:"Brokerage",key:"supplyDashBrokerage"},
     {hdr:"Key Handover Date",key:"keysHandoverDate"},
     {hdr:"Internal Remarks",key:"tokenRemarks"},
-    {hdr:"POC Comments",key:"pocComments"},
-    {hdr:"Manager Comments",key:"managerComments"},
-    {hdr:"Rahool Comments",key:"rahoolComments"},
-    {hdr:"Prashant Comments",key:"prashantComments"}
+    {hdr:"Latest Note",fn:function(p){return latestNote(p)}}
   ];
 
   function csvVal(v) {

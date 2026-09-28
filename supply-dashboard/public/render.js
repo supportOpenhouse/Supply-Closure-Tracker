@@ -72,7 +72,7 @@ function _render() {
 
   // Filters
   h += '<div class="filters">';
-  h += '<input id="searchBox" value="'+esc(state.search)+'" placeholder="Search society, owner, UID..." oninput="updateSearch(this.value)">';
+  h += '<input id="searchBox" value="'+esc(state.search)+'" placeholder="Search any lead eg: OHGD1709 Sahaj" oninput="updateSearch(this.value)">';
   h += '<select onchange="updateFilter(\'cityFilter\',this.value)"><option value="All">All Cities</option>';
   cities.filter(c=>c!=="All").sort().forEach(c => { h += '<option value="'+esc(c)+'"'+(state.cityFilter===c?' selected':'')+'>'+esc(c)+'</option>'; });
   h += '</select>';
@@ -200,7 +200,7 @@ function _render() {
   var isAdmin = currentUser && currentUser.role === 'admin';
   var isManager = currentUser && currentUser.role === 'manager';
   var COLS = [
-    {hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"ID / Lead ID",key:"uid"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"OH Price",key:null},{hdr:"Pricing Comments",key:null},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"CP Name",key:"cpName"},{hdr:"Seller Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Visit Schedule History",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Followup Date",key:null},{hdr:"Offer Price",key:null},{hdr:"Brokerage",key:"supplyDashBrokerage"},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"Internal Remarks",key:null},{hdr:"POC Comments",key:null},{hdr:"Manager Comments",key:null},{hdr:"Rahool Comments",key:null},{hdr:"Prashant Comments",key:null}
+    {hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"ID / Lead ID",key:"uid"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"OH Price",key:null},{hdr:"Pricing Comments",key:null},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"CP Name",key:"cpName"},{hdr:"Seller Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Visit Schedule History",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Followup Date",key:null},{hdr:"Offer Price",key:null},{hdr:"Brokerage",key:"supplyDashBrokerage"},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"Internal Remarks",key:null}
   ];
   // Admin-only Priority column (first)
   if (isAdmin) COLS.unshift({hdr:"\u2605", key:"isHighPriority"});
@@ -354,30 +354,6 @@ function _render() {
     // Internal Remarks
     h += '<td style="font-size:11px;max-width:180px;white-space:normal;word-wrap:break-word;color:#6b7280">'+esc(p.tokenRemarks||"\u2014")+'</td>';
 
-    // Comments
-    var commentFields = [
-      {key:"pocComments", db:"poc_comments", tsKey:"pocCommentsAt"},
-      {key:"managerComments", db:"manager_comments", tsKey:"managerCommentsAt"},
-      {key:"rahoolComments", db:"rahool_comments", tsKey:"rahoolCommentsAt"},
-      {key:"prashantComments", db:"prashant_comments", tsKey:"prashantCommentsAt"}
-    ];
-    commentFields.forEach(cf => {
-      const dotKey = p.uid + "_" + cf.db;
-      const ts = timeAgo(p[cf.tsKey]);
-      h += '<td onclick="event.stopPropagation()">';
-      if (canEdit()) {
-        h += '<textarea class="comment-input" placeholder="\u2014" oninput="changeComment(\''+p.uid+"','"+cf.db+"','"+cf.key+'\',this.value)">'+esc(p[cf.key]||"")+'</textarea>';
-        h += '<div style="display:flex;align-items:center;gap:3px;margin-top:2px">';
-        h += '<span id="dot_'+dotKey+'" class="save-dot '+(saveStatus[dotKey]||'')+'"></span>';
-        if (ts) h += '<span style="font-size:9px;color:#9ca3af">'+ts+'</span>';
-        h += '</div>';
-      } else {
-        h += '<div style="font-size:11px;color:#374151;max-width:160px">'+esc(p[cf.key]||"\u2014")+'</div>';
-        if (ts) h += '<div style="font-size:9px;color:#9ca3af">'+ts+'</div>';
-      }
-      h += '</td>';
-    });
-
     h += '</tr>';
 
     // Expanded row
@@ -458,6 +434,9 @@ function _render() {
         h += '<div style="font-size:11px;color:#9ca3af;font-style:italic">Visit not completed \u2014 no images available</div>';
       }
 
+      // Notes thread (notes.js) — the only place comments are shown or added.
+      h += notesSection(p);
+
       h += '</div></td></tr>';
       } catch(expandErr) {
         h += '<tr class="expand-row"><td colspan="' + colCount + '" style="padding:12px 20px;color:#ef4444;font-size:12px">Error loading details: '+esc(expandErr.message)+'</td></tr>';
@@ -499,7 +478,16 @@ function _render() {
   var tw = document.getElementById("tableWrap");
   var scrollTop = tw ? tw.scrollTop : 0;
   var scrollLeft = tw ? tw.scrollLeft : 0;
+  // A redraw replaces the note box; keep focus + caret if the user was in it.
+  var active = document.activeElement;
+  var noteFocus = active && active.id && active.id.indexOf("noteInput_") === 0
+    ? { id: active.id, start: active.selectionStart, end: active.selectionEnd } : null;
   document.getElementById("app").innerHTML = h;
+  scrollNoteLists();
+  if (noteFocus) {
+    var el = document.getElementById(noteFocus.id);
+    if (el && !el.disabled) { el.focus(); el.selectionStart = noteFocus.start; el.selectionEnd = noteFocus.end; }
+  }
   tw = document.getElementById("tableWrap");
   if (tw) { tw.scrollTop = scrollTop; tw.scrollLeft = scrollLeft; }
   renderOverlays();
