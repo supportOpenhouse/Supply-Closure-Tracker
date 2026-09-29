@@ -150,3 +150,18 @@ document.addEventListener("keydown", function(e) {
   else if (e.key === "ArrowLeft") { e.preventDefault(); modalStep(-1); }
   else if (e.key === "Escape") { e.preventDefault(); closeModal(); }
 });
+
+// Login pop-up: shown once after a fresh sign-in (flag set by login.html).
+// Click anywhere or press Esc to close.
+(function showLoginMeme() {
+  if (sessionStorage.getItem("showLoginMeme") !== "1") return;
+  sessionStorage.removeItem("showLoginMeme");
+  var el = document.createElement("div");
+  el.className = "login-meme";
+  el.innerHTML = '<img src="/loginmeme.jpeg" alt=""><div class="login-meme-hint">click anywhere or press Esc to close</div>';
+  function close() { el.remove(); document.removeEventListener("keydown", onKey); }
+  function onKey(e) { if (e.key === "Escape") close(); }
+  el.addEventListener("click", close);
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(el);
+})();

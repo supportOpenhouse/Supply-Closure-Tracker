@@ -91,6 +91,7 @@ async function handleGoogleLogin(response) {
     if (res.ok) {
       msgEl.className = "msg success";
       msgEl.textContent = "Welcome! Redirecting...";
+      sessionStorage.setItem("showLoginMeme", "1"); // dashboard shows the login pop-up once
       setTimeout(() => { window.location.href = "/"; }, 500);
     } else if (res.status === 403) {
       // Not whitelisted
