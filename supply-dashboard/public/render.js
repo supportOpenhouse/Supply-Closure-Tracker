@@ -189,6 +189,9 @@ function _render() {
   }
   h += '<span style="font-size:10px;color:#9ca3af'+(showBulkFU?'':';margin-left:auto')+'">'+filtered.length+' results &middot; Page '+state.page+'/'+Math.max(totalPages,1)+'</span>';
   h += '<span id="lastUpdated" style="font-size:9px;color:#d1d5db">'+(lastRefreshed ? lastRefreshed : '')+'</span>';
+  if (hasCustomColOrder()) {
+    h += '<button onclick="resetColOrder()" style="padding:3px 8px;border-radius:5px;font-size:10px;cursor:pointer;border:1px solid #e5e7eb;background:#f9fafb;color:#6b7280;transition:all 0.15s" title="Restore the default column order">Reset columns</button>';
+  }
   h += '<button onclick="refreshData()" style="padding:3px 8px;border-radius:5px;font-size:10px;cursor:pointer;border:1px solid #e5e7eb;background:#f9fafb;color:#6b7280;transition:all 0.15s">&#x21bb;</button>';
   if (currentUser && currentUser.role === 'admin') {
     h += '<button onclick="downloadCSV()" style="padding:3px 8px;border-radius:5px;font-size:10px;cursor:pointer;border:1px solid #e5e7eb;background:#f9fafb;color:#6b7280;transition:all 0.15s" title="Download CSV">&#x2913; CSV</button>';
@@ -202,6 +205,8 @@ function _render() {
   var COLS = [
     {hdr:"Date Added",key:"scheduleSubmittedAt"},{hdr:"ID / Lead ID",key:"uid"},{hdr:"Society",key:"society"},{hdr:"City",key:"city"},{hdr:"Location",key:"locality"},{hdr:"Tower",key:"towerNo"},{hdr:"Unit No.",key:"unitNo"},{hdr:"Config",key:"configuration"},{hdr:"Ask (in Lakhs)",key:"demandPrice"},{hdr:"OH Price",key:null},{hdr:"Pricing Comments",key:null},{hdr:"Area (in Sqft)",key:"areaSqft"},{hdr:"Floor",key:"floor"},{hdr:"Source",key:"source"},{hdr:"CP Name",key:"cpName"},{hdr:"Seller Name",key:"ownerName"},{hdr:"Phone",key:"contactNo"},{hdr:"Status",key:null},{hdr:"Visit Schedule History",key:null},{hdr:"Exit Facing",key:"exitFacing"},{hdr:"Balcony View",key:null},{hdr:"POC",key:"assignedBy"},{hdr:"Followup Date",key:null},{hdr:"Offer Price",key:null},{hdr:"Brokerage",key:"supplyDashBrokerage"},{hdr:"Key Handover",key:"keysHandoverDate"},{hdr:"Internal Remarks",key:null}
   ];
+  // Per-user drag order (handlers.js); the admin star column stays pinned first.
+  COLS = orderColumns(COLS);
   // Admin-only Priority column (first)
   if (isAdmin) COLS.unshift({hdr:"\u2605", key:"isHighPriority"});
   var colCount = COLS.length;
@@ -218,7 +223,8 @@ function _render() {
     else if (col.hdr === 'Pricing Comments') thStyle = ' style="width:180px;min-width:180px"';
     else if (col.hdr === 'Visit Schedule History') thStyle = ' style="min-width:210px"';
     else if (col.hdr.indexOf('Comments') >= 0) thStyle = ' style="min-width:150px"';
-    h += '<th'+sortable+thStyle+'>'+col.hdr+icon+'</th>';
+    var drag = col.key === 'isHighPriority' ? '' : ' draggable="true" data-col="'+esc(col.hdr)+'" ondragstart="colDragStart(event)" ondragover="colDragOver(event)" ondragleave="colDragLeave(event)" ondrop="colDrop(event)" ondragend="colDragEnd(event)"';
+    h += '<th'+sortable+thStyle+drag+'>'+col.hdr+icon+'</th>';
   });
   h += '</tr></thead><tbody>';
 
@@ -233,22 +239,37 @@ function _render() {
 
     h += '<tr class="datarow'+(isExp?' expanded':'')+(p.isHighPriority?' priority-row':'')+(p.directDemandPriority?' direct-demand':'')+(isFollowupPending(p)?' followup-pending':'')+'" onclick="toggleExpand(\''+p.uid+'\')">';
     if (isAdmin) h += '<td onclick="event.stopPropagation()" style="text-align:center;width:36px"><input type="checkbox" '+(p.isHighPriority?'checked ':'')+'onclick="togglePriority(\''+p.uid+'\',event)" style="cursor:pointer;width:14px;height:14px;accent-color:#10b981"></td>';
+    // Each cell below is captured under its COLS header, then emitted in the
+    // user's column order — a new cell needs a matching endCell(hdr).
+    var rowHead = h, cells = {};
+    h = '';
+    var endCell = function(hdr) { cells[hdr] = h; h = ''; };
     h += '<td style="font-size:11px;white-space:nowrap;color:#6b7280">'+formatDateOnly(p.scheduleSubmittedAt)+'</td>';
+    endCell("Date Added");
     h += '<td style="font-size:11px;font-family:monospace">';
     h += '<span style="white-space:nowrap">'+esc(p.uid||"")+(p.leadId?' <span style="color:#9ca3af">('+esc(p.leadId)+')</span>':'')+'</span>';
     if ((isAdmin || isManager) && p.replicatedFrom) h += '<div style="font-size:9px;color:#9ca3af;margin-top:2px">replicated from: '+esc(p.replicatedFrom)+'</div>';
     if ((isAdmin || isManager) && p.replicated) h += '<div style="font-size:9px;color:#9ca3af;margin-top:2px">was replicated</div>';
     h += '</td>';
+    endCell("ID / Lead ID");
     h += '<td class="society-cell">'+esc(p.society)+'</td>';
+    endCell("Society");
     h += '<td>'+esc(p.city||"\u2014")+'</td>';
+    endCell("City");
     h += '<td>'+esc(p.locality)+'</td>';
+    endCell("Location");
     h += '<td>'+(p.towerNo||"\u2014")+'</td>';
+    endCell("Tower");
     h += '<td class="unit-cell">'+(p.unitNo||"\u2014")+'</td>';
+    endCell("Unit No.");
     h += '<td>'+(p.configuration||"\u2014")+'</td>';
+    endCell("Config");
     h += '<td class="ask-cell">'+(p.demandPrice||"\u2014")+'</td>';
+    endCell("Ask (in Lakhs)");
 
     // OH Price (computed from oh_pricing DB; read-only)
     h += '<td style="width:110px;white-space:nowrap;font-size:11px">'+ohPriceCell(p)+'</td>';
+    endCell("OH Price");
 
     // Pricing Comments (editable comment field)
     {
@@ -266,20 +287,24 @@ function _render() {
       }
       h += '</td>';
     }
+    endCell("Pricing Comments");
 
     h += '<td>'+(p.areaSqft||"\u2014")+'</td>';
+    endCell("Area (in Sqft)");
     if (isNegValueFloor(p.floor)) {
       h += '<td style="text-align:center"><span style="display:inline-block;min-width:18px;padding:1px 5px;background:#fee2e2;color:#b91c1c;border:1px solid #b91c1c;border-radius:3px;font-weight:700">'+esc(p.floor)+'</span></td>';
     } else {
       h += '<td style="text-align:center">'+esc(p.floor||"\u2014")+'</td>';
     }
+    endCell("Floor");
     h += '<td>'+esc(p.source)+'</td>';
-    // CP Name sits immediately left of Seller Name — must stay in step with the
-    // COLS order above; these <td>s are hand-written, so a cell added to one and
-    // not the other shifts every column after it.
+    endCell("Source");
     h += '<td>'+esc(p.cpName||"\u2014")+'</td>';
+    endCell("CP Name");
     h += '<td>'+esc(p.ownerName)+'</td>';
+    endCell("Seller Name");
     h += '<td style="font-size:11px;white-space:nowrap">'+(p.contactNo||"\u2014")+'</td>';
+    endCell("Phone");
 
     // Status — locked (read-only) once a lead is Cancelled Post Token.
     var stageLocked = status === 'Cancelled Post Token';
@@ -302,13 +327,18 @@ function _render() {
       h += '<div style="font-size:9px;color:#9ca3af;margin-top:-10px;line-height:1">'+formatDateOnly(statusTs)+'</div>';
     }
     h += '</td>';
+    endCell("Status");
 
     // Visit Schedule History
     h += '<td>'+visitHistoryCell(p)+'</td>';
+    endCell("Visit Schedule History");
 
     h += '<td>'+(p.exitFacing||"\u2014")+'</td>';
+    endCell("Exit Facing");
     h += '<td class="balcony-cell">'+(getBalconyView(p)||p.balconyView||"\u2014")+'</td>';
+    endCell("Balcony View");
     h += '<td class="small-cell">'+esc(p.assignedBy||"\u2014")+'</td>';
+    endCell("POC");
 
     // Followup Date
     {
@@ -331,6 +361,7 @@ function _render() {
         h += '<td style="font-size:11px" title="'+esc(historyTitle)+'">'+(latestDate ? formatDateOnly(latestDate) : "\u2014")+'</td>';
       }
     }
+    endCell("Followup Date");
 
     // Offer (admin-only edit)
     if (currentUser && currentUser.role === "admin") {
@@ -338,6 +369,7 @@ function _render() {
     } else {
       h += '<td style="font-weight:600;color:#047857">'+(p.offerPrice||"\u2014")+'</td>';
     }
+    endCell("Offer Price");
 
     // Property Score / Price Score / Deal Multiplier moved to the expanded view.
 
@@ -347,22 +379,28 @@ function _render() {
     } else {
       h += '<td style="font-weight:600;color:#7c3aed">'+(p.supplyDashBrokerage||"\u2014")+'</td>';
     }
+    endCell("Brokerage");
 
     // Key Handover Date
     h += '<td style="font-size:11px;white-space:nowrap">'+formatDateOnly(p.keysHandoverDate)+'</td>';
+    endCell("Key Handover");
 
     // Internal Remarks
     h += '<td style="font-size:11px;max-width:180px;white-space:normal;word-wrap:break-word;color:#6b7280">'+esc(p.tokenRemarks||"\u2014")+'</td>';
+    endCell("Internal Remarks");
 
-    h += '</tr>';
+    h = rowHead + COLS.map(function(c) { return cells[c.hdr] || ''; }).join('') + '</tr>';
 
     // Expanded row
     if (isExp) {
       try {
-      // Split the expanded row so the Notes box sits under Config → Pricing Comments,
-      // with details + images to its left.
+      // Split the expanded row so the Notes box sits under Config and the 3 columns
+      // after it (Config → Pricing Comments in the default order), with details +
+      // images to its left. Clamped so a dragged column order still leaves room.
+      var NOTES_SPAN = 4;
       var notesFrom = COLS.findIndex(function(c){ return c.hdr === "Config"; });
-      var notesTo = COLS.findIndex(function(c){ return c.hdr === "Pricing Comments"; });
+      notesFrom = Math.max(1, Math.min(notesFrom, colCount - NOTES_SPAN));
+      var notesTo = notesFrom + NOTES_SPAN - 1;
       h += '<tr class="expand-row"><td colspan="' + notesFrom + '"><div class="expand-content">';
       h += '<div class="detail-tags">';
       const rate = getRatePerSqft(p);

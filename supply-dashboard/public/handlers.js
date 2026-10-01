@@ -110,6 +110,98 @@ function toggleSort(col) {
   render();
 }
 
+// ── Column order (drag headers; saved per user in this browser) ──
+function colOrderKey() {
+  return 'colOrder:' + ((currentUser && currentUser.email) || '');
+}
+
+function loadColOrder() {
+  try {
+    var saved = JSON.parse(localStorage.getItem(colOrderKey()));
+    return Array.isArray(saved) ? saved : null;
+  } catch (e) { return null; }
+}
+
+function hasCustomColOrder() {
+  return !!loadColOrder();
+}
+
+// Reorders COLS by the saved header list. Columns added since the order was
+// saved slot in right after their default left-hand neighbour.
+function orderColumns(cols) {
+  var saved = loadColOrder();
+  if (!saved) return cols;
+  var byHdr = {};
+  cols.forEach(function(c) { byHdr[c.hdr] = c; });
+  var out = saved
+    .filter(function(hdr, i) { return byHdr[hdr] && saved.indexOf(hdr) === i; })
+    .map(function(hdr) { return byHdr[hdr]; });
+  cols.forEach(function(c, i) {
+    if (out.indexOf(c) >= 0) return;
+    var prev = i > 0 ? out.indexOf(cols[i - 1]) : -1;
+    out.splice(prev + 1, 0, c);
+  });
+  return out;
+}
+
+function resetColOrder() {
+  try { localStorage.removeItem(colOrderKey()); } catch (e) {}
+  render();
+}
+
+var dragCol = null;
+
+function colDropSide(e) {
+  var r = e.currentTarget.getBoundingClientRect();
+  return e.clientX < r.left + r.width / 2 ? 'before' : 'after';
+}
+
+function colDragStart(e) {
+  dragCol = e.currentTarget.getAttribute('data-col');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', dragCol);
+  e.currentTarget.classList.add('col-dragging');
+}
+
+function colDragOver(e) {
+  if (!dragCol) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  var th = e.currentTarget;
+  if (th.getAttribute('data-col') === dragCol) return;
+  var side = colDropSide(e);
+  th.classList.toggle('col-drop-before', side === 'before');
+  th.classList.toggle('col-drop-after', side === 'after');
+}
+
+function colDragLeave(e) {
+  e.currentTarget.classList.remove('col-drop-before', 'col-drop-after');
+}
+
+function colDrop(e) {
+  e.preventDefault();
+  var target = e.currentTarget.getAttribute('data-col');
+  var side = colDropSide(e);
+  var from = dragCol;
+  dragCol = null;
+  if (!from || from === target) return;
+  var order = Array.prototype.map.call(
+    document.querySelectorAll('#tableWrap thead th[data-col]'),
+    function(th) { return th.getAttribute('data-col'); }
+  );
+  order.splice(order.indexOf(from), 1);
+  order.splice(order.indexOf(target) + (side === 'after' ? 1 : 0), 0, from);
+  try { localStorage.setItem(colOrderKey(), JSON.stringify(order)); } catch (err) {}
+  render();
+}
+
+function colDragEnd(e) {
+  dragCol = null;
+  document.querySelectorAll('#tableWrap thead th').forEach(function(th) {
+    th.classList.remove('col-dragging', 'col-drop-before', 'col-drop-after');
+  });
+}
+
 async function changeUserRole(email, newRole) {
   await fetch("/api/admin/users", {
     method: "POST",
