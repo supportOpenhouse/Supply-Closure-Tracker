@@ -3,3 +3,4 @@ supply-dashboard/comment_notes.csv
 supply-dashboard/property_notes_import.csv
 CLAUDE.md
 doc/
+*.csv

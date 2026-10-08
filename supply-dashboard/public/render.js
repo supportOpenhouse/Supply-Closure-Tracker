@@ -528,7 +528,7 @@ function _render() {
   var scrollLeft = tw ? tw.scrollLeft : 0;
   // A redraw replaces the note box; keep focus + caret if the user was in it.
   var active = document.activeElement;
-  var noteFocus = active && active.id && active.id.indexOf("noteInput_") === 0
+  var noteFocus = active && active.id && (active.id.indexOf("noteInput_") === 0 || active.id.indexOf("noteEdit_") === 0)
     ? { id: active.id, start: active.selectionStart, end: active.selectionEnd } : null;
   document.getElementById("app").innerHTML = h;
   scrollNoteLists();

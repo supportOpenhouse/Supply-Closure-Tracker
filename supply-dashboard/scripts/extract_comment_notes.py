@@ -8,6 +8,8 @@ Usage (from supply-dashboard/):
   python3 scripts/extract_comment_notes.py            # reads DB, prints table, writes CSV
   python3 scripts/extract_comment_notes.py --import   # ...and loads the notes into property_notes
   add --with-legacy-sheet to also include legacy comments stored only in the Google Sheet
+  python3 scripts/extract_comment_notes.py --push-rahool [--dry-run]
+      # append properties.rahool_comments as notes, skipping LCS duplicates
 
 DATABASE_URL comes from the environment or supply-dashboard/.env. Queries run
 through the `psql` CLI, so no Python DB driver is needed.
@@ -219,7 +221,6 @@ def run():
     if "--import" in sys.argv:
         import_into_db(to_import)
 
-
 IMPORT_COLS = ["uid", "kind", "note_date", "note", "author_name", "source", "author_source", "created_at"]
 
 
@@ -257,22 +258,139 @@ def pg_timestamp(v):
     return datetime.fromisoformat(m.group(1) + "T" + (m.group(2) or "00:00:00")).replace(tzinfo=tz)
 
 
-def import_into_db(rows):
-    """Replace all previously imported notes with this run's. Dashboard-sent
-    notes (source='dashboard') are never touched."""
+def import_into_db(rows, replace=True):
+    """Load rows into property_notes. replace=True first deletes every previously
+    imported note (full rebuild); replace=False only appends. Dashboard-sent notes
+    (source='dashboard') are never touched."""
     path = os.path.join(os.path.dirname(__file__), "..", "property_notes_import.csv")
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=IMPORT_COLS)
         w.writeheader()
         w.writerows(rows)
     sql = ("BEGIN;"
-           "DELETE FROM property_notes WHERE source = 'imported';"
-           f"\\copy property_notes ({', '.join(IMPORT_COLS)}) FROM '{os.path.abspath(path)}' WITH (FORMAT csv, HEADER true, NULL '')\n"
+           + ("DELETE FROM property_notes WHERE source = 'imported';" if replace else "")
+           + f"\\copy property_notes ({', '.join(IMPORT_COLS)}) FROM '{os.path.abspath(path)}' WITH (FORMAT csv, HEADER true, NULL '')\n"
            "COMMIT;")
     subprocess.run(["psql", database_url(), "-v", "ON_ERROR_STOP=1"], input=sql.replace(";", ";\n"),
                    text=True, check=True)
-    print(f"imported {len(rows)} notes into property_notes", file=sys.stderr)
+    print(f"{'imported' if replace else 'appended'} {len(rows)} notes into property_notes", file=sys.stderr)
 
+
+DUP_THRESHOLD = 0.85  # LCS similarity at or above this = same note
+
+
+def _norm(t):
+    return " ".join(t.lower().split())
+
+
+def lcs_len(a, b):
+    """Longest common subsequence length (characters), O(len(a)*len(b)) time, O(len(b)) memory."""
+    prev = [0] * (len(b) + 1)
+    for ca in a:
+        cur = [0]
+        for j, cb in enumerate(b, 1):
+            cur.append(prev[j - 1] + 1 if ca == cb else max(prev[j], cur[j - 1]))
+        prev = cur
+    return prev[-1]
+
+
+def lcs_similarity(a, b):
+    """2*LCS / (len a + len b) on normalized text: 1.0 = identical, 0 = nothing shared."""
+    a, b = _norm(a), _norm(b)
+    if not a or not b:
+        return 0.0
+    return 2 * lcs_len(a, b) / (len(a) + len(b))
+
+
+def push_rahool(dry_run):
+    """Push properties.rahool_comments into property_notes as Rahool notes, skipping
+    any note whose LCS similarity to a note already on that lead (any source, or
+    one accepted earlier in this push) is >= DUP_THRESHOLD. Appends only."""
+    field = "rahool_comments"
+    cands = []
+    for r in query(f"SELECT uid, {field}, {field}_at FROM properties WHERE COALESCE(btrim({field}), '') <> ''"):
+        notes = extract_notes(r[field], parse_ts(r[field + "_at"]))
+        for i, (note_date, note) in enumerate(notes):
+            if note.strip():
+                cands.append(import_row(r["uid"], field, FIXED_LABELS[field], "fixed", note_date, note,
+                                        r[field + "_at"], len(notes) - i))
+
+    existing = {}
+    for r in query("SELECT uid, note FROM property_notes WHERE deleted_at IS NULL"):
+        existing.setdefault(r["uid"], []).append(r["note"])
+
+    push, dups, near = [], [], []
+    for c in cands:
+        others = existing.get(c["uid"], [])
+        best = max((lcs_similarity(c["note"], o) for o in others), default=0.0)
+        if best >= DUP_THRESHOLD:
+            dups.append(c)
+        else:
+            if best >= 0.6:
+                near.append((best, c["uid"], c["note"]))
+            push.append(c)
+            existing.setdefault(c["uid"], []).append(c["note"])
+
+    print(f"rahool_comments: {len(cands)} notes from {len({c['uid'] for c in cands})} leads -> "
+          f"{len(dups)} duplicates skipped, {len(push)} to push", file=sys.stderr)
+    for sim, uid, note in sorted(near, reverse=True)[:15]:
+        print(f"  pushing near-match {sim:.2f} {uid}: {note[:80]}", file=sys.stderr)
+    if not dry_run and push:
+        import_into_db(push, replace=False)
+
+
+def push_rahool_logs(dry_run):
+    """For every lead, take Rahool Sureka's latest comment_changed log per comment box
+    (pricing excluded) and append its text as notes by him — split into dated notes,
+    each skipped if its LCS similarity to a note already on the lead (or one accepted
+    earlier in this push) is >= DUP_THRESHOLD. Cleared boxes (empty text) are skipped.
+    activity_logs.created_at is IST wall time (no offset)."""
+    ist = timezone(timedelta(hours=5, minutes=30))
+    boxes = ",".join(f"'{f}'" for f in COMMENT_FIELDS)
+    latest = query(
+        "SELECT DISTINCT ON (uid, details::jsonb->>'field') uid, details::jsonb->>'field' AS field, "
+        "created_at, details::jsonb->>'new' AS new FROM activity_logs "
+        f"WHERE action = 'comment_changed' AND actor_name = 'Rahool Sureka' AND details::jsonb->>'field' IN ({boxes}) "
+        "ORDER BY uid, details::jsonb->>'field', created_at DESC, id DESC")
+
+    existing = {}
+    for r in query("SELECT uid, note FROM property_notes WHERE deleted_at IS NULL"):
+        existing.setdefault(r["uid"], []).append(r["note"])
+
+    push, dups, cleared = [], 0, 0
+    for r in latest:
+        text = (r["new"] or "").strip()
+        if not text:
+            cleared += 1
+            continue
+        at = pg_timestamp(r["created_at"]).replace(tzinfo=ist)
+        notes = extract_notes(text, at)
+        for i, (note_date, note) in enumerate(notes):
+            note = note.strip()
+            if not note:
+                continue
+            others = existing.get(r["uid"], [])
+            if max((lcs_similarity(note, o) for o in others), default=0.0) >= DUP_THRESHOLD:
+                dups += 1
+                continue
+            base = datetime.fromisoformat(note_date + "T12:00:00+05:30") if note_date else at
+            push.append({"uid": r["uid"], "kind": r["field"].replace("_comments", ""), "note_date": note_date or at.date().isoformat(),
+                         "note": note, "author_name": "Rahool Sureka", "source": "imported",
+                         "author_source": "rahool_log_latest",
+                         "created_at": (base + timedelta(seconds=len(notes) - i)).isoformat()})
+            existing.setdefault(r["uid"], []).append(note)
+
+    print(f"Rahool Sureka latest edits: {len(latest)} (lead, box) pairs on {len({r['uid'] for r in latest})} leads, "
+          f"{cleared} cleared -> {dups} duplicate notes skipped, {len(push)} to push", file=sys.stderr)
+    by_kind = {}
+    for p in push:
+        by_kind[p["kind"]] = by_kind.get(p["kind"], 0) + 1
+    print(f"  to push by box: {by_kind}", file=sys.stderr)
+    if dry_run:
+        for p in push[:12]:
+            print(f"  {p['uid']} [{p['kind']}] {p['note_date']} | {p['note'][:90]}", file=sys.stderr)
+    elif push:
+        import_into_db(push, replace=False)
 
 def test():
     ref = date(2026, 9, 29)
@@ -288,6 +406,10 @@ def test():
     assert len(extract_notes("5 market price check", ref)) == 1          # "market" is not March
     assert extract_notes("15 Dec follow up", ref)[0][0] == "2025-12-15"   # future -> last year
     assert extract_notes("no dates here", ref) == [(None, "no dates here")]
+    assert lcs_len("abcde", "ace") == 3
+    assert lcs_similarity("Legal Issues", "legal  issues") == 1.0
+    assert lcs_similarity("max 94", "max 94 at 1%") >= 0.6
+    assert lcs_similarity("take it", "145 at 1% PG") < 0.6
     assert pg_timestamp("2026-08-10 09:30:02.29893").isoformat() == "2026-08-10T09:30:02+00:00"
     assert pg_timestamp("2026-09-28 15:29:23.1+05:30").isoformat() == "2026-09-28T15:29:23+05:30"
     assert pg_timestamp("2026-09-28 09:59:23+00").isoformat() == "2026-09-28T09:59:23+00:00"
@@ -302,4 +424,11 @@ def test():
 
 
 if __name__ == "__main__":
-    test() if "--test" in sys.argv else run()
+    if "--test" in sys.argv:
+        test()
+    elif "--push-rahool-logs" in sys.argv:
+        push_rahool_logs(dry_run="--dry-run" in sys.argv)
+    elif "--push-rahool" in sys.argv:
+        push_rahool(dry_run="--dry-run" in sys.argv)
+    else:
+        run()

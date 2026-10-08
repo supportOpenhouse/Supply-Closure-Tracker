@@ -5,10 +5,10 @@
 // Thread state lives here (not in the DOM), so the table's re-renders keep the
 // loaded notes and any unsent draft.
 
-const noteThreads = {}; // uid -> { notes: null|[], draft, sending, error }
+const noteThreads = {}; // uid -> { notes: null|[], draft, sending, error, editingId, editDraft, savingEdit }
 
 function noteThreadFor(uid) {
-  return noteThreads[uid] || (noteThreads[uid] = { notes: null, draft: "", sending: false, error: "" });
+  return noteThreads[uid] || (noteThreads[uid] = { notes: null, draft: "", sending: false, error: "", editingId: null, editDraft: "", savingEdit: false });
 }
 
 async function loadNotes(uid) {
@@ -67,6 +67,72 @@ async function sendNote(uid) {
   focusNoteInput(uid);
 }
 
+// ── Editing your own note ──
+// Same rule as sending: nothing is saved until Save / Enter. Ownership = the note
+// was posted under your login email (the server enforces it too).
+function isOwnNote(n) {
+  return !!(n.author_email && currentUser && n.author_email.toLowerCase() === (currentUser.email || "").toLowerCase());
+}
+
+function startEditNote(uid, id) {
+  const t = noteThreadFor(uid);
+  const n = (t.notes || []).find(x => x.id === id);
+  if (!n || !isOwnNote(n)) return;
+  t.editingId = id;
+  t.editDraft = n.note;
+  t.error = "";
+  render();
+  const el = document.getElementById("noteEdit_" + id);
+  if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; }
+}
+
+function cancelEditNote(uid) {
+  const t = noteThreadFor(uid);
+  t.editingId = null;
+  t.editDraft = "";
+  render();
+}
+
+function editDraft(uid, el) { noteThreadFor(uid).editDraft = el.value; } // local only — never sent
+
+function editKey(e, uid) {
+  if (e.key === "Escape") { e.preventDefault(); cancelEditNote(uid); return; }
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); saveEditNote(uid); }
+}
+
+async function saveEditNote(uid) {
+  const t = noteThreadFor(uid);
+  const id = t.editingId;
+  const note = t.editDraft.trim();
+  if (!id || !note || t.savingEdit) return;
+  t.savingEdit = true;
+  t.error = "";
+  render();
+
+  const res = await fetch("/api/notes", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: id, note: note })
+  });
+  t.savingEdit = false;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    t.error = "Not saved: " + (err.error || res.status) + " — your edit is kept above.";
+    render();
+    return;
+  }
+  const row = await res.json();
+  const i = t.notes.findIndex(x => x.id === id);
+  if (i >= 0) t.notes[i] = row;
+  t.editingId = null;
+  t.editDraft = "";
+
+  // If it was the latest note, the row's preview/export summary changes too.
+  const p = DATA.find(d => d.uid === uid);
+  if (p && p.notes && i === t.notes.length - 1) p.notes.note = row.note;
+  render();
+}
+
 function focusNoteInput(uid) {
   const el = document.getElementById("noteInput_" + uid);
   if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; }
@@ -92,9 +158,21 @@ function notesSection(p) {
   if (t.notes === null) h += '<div class="notes-empty">Loading…</div>';
   else if (t.notes.length === 0) h += '<div class="notes-empty">No notes yet</div>';
   else t.notes.forEach(n => {
+    const editing = t.editingId === n.id;
     h += '<div class="note-item"><div class="note-meta"><b>' + esc(n.author_name) + '</b> · ' + fmtNoteTime(n);
     if (n.source === "imported") h += ' <span class="note-tag" title="Split from the old ' + esc(n.kind || '') + ' comment box; author from ' + esc(n.author_source || '') + '">imported</span>';
-    h += '</div><div class="note-body">' + esc(n.note) + '</div></div>';
+    if (n.updated_at) h += ' <span class="note-edited" title="Edited ' + esc(new Date(n.updated_at).toLocaleString("en-IN")) + '">(edited)</span>';
+    if (isOwnNote(n) && !editing && !t.editingId) h += ' <span class="note-edit-link" onclick="startEditNote(\'' + p.uid + '\',' + n.id + ')">Edit</span>';
+    h += '</div>';
+    if (editing) {
+      h += '<textarea class="note-edit" id="noteEdit_' + n.id + '" rows="2" oninput="editDraft(\'' + p.uid + '\',this)" onkeydown="editKey(event,\'' + p.uid + '\')"' + (t.savingEdit ? ' disabled' : '') + '>' + esc(t.editDraft) + '</textarea>';
+      h += '<div class="note-edit-actions"><button onclick="saveEditNote(\'' + p.uid + '\')"' + (t.savingEdit ? ' disabled' : '') + '>' + (t.savingEdit ? 'Saving…' : 'Save') + '</button>';
+      h += '<button class="secondary" onclick="cancelEditNote(\'' + p.uid + '\')"' + (t.savingEdit ? ' disabled' : '') + '>Cancel</button>';
+      h += '<span>Enter to save · Shift+Enter new line · Esc to cancel</span></div>';
+    } else {
+      h += '<div class="note-body">' + esc(n.note) + '</div>';
+    }
+    h += '</div>';
   });
   h += '</div>';
   if (t.error) h += '<div class="notes-error">' + esc(t.error) + '</div>';
@@ -106,7 +184,10 @@ function notesSection(p) {
   return h + '</div>';
 }
 
-// Keep each thread scrolled to its newest note after a render.
+// Keep each thread scrolled to its newest note after a render — except while a
+// note in it is being edited, so the edit box doesn't scroll out of view.
 function scrollNoteLists() {
-  document.querySelectorAll(".notes-list").forEach(el => { el.scrollTop = el.scrollHeight; });
+  document.querySelectorAll(".notes-list").forEach(el => {
+    if (!el.querySelector(".note-edit")) el.scrollTop = el.scrollHeight;
+  });
 }
