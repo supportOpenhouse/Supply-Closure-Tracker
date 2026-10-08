@@ -76,9 +76,10 @@ function isOwnNote(n) {
 
 function startEditNote(uid, id) {
   const t = noteThreadFor(uid);
-  const n = (t.notes || []).find(x => x.id === id);
+  // ids are BIGINT, which the Neon driver returns as strings — compare as strings.
+  const n = (t.notes || []).find(x => String(x.id) === String(id));
   if (!n || !isOwnNote(n)) return;
-  t.editingId = id;
+  t.editingId = String(n.id);
   t.editDraft = n.note;
   t.error = "";
   render();
@@ -122,7 +123,7 @@ async function saveEditNote(uid) {
     return;
   }
   const row = await res.json();
-  const i = t.notes.findIndex(x => x.id === id);
+  const i = t.notes.findIndex(x => String(x.id) === id);
   if (i >= 0) t.notes[i] = row;
   t.editingId = null;
   t.editDraft = "";
@@ -158,11 +159,11 @@ function notesSection(p) {
   if (t.notes === null) h += '<div class="notes-empty">Loading…</div>';
   else if (t.notes.length === 0) h += '<div class="notes-empty">No notes yet</div>';
   else t.notes.forEach(n => {
-    const editing = t.editingId === n.id;
+    const editing = t.editingId === String(n.id);
     h += '<div class="note-item"><div class="note-meta"><b>' + esc(n.author_name) + '</b> · ' + fmtNoteTime(n);
     if (n.source === "imported") h += ' <span class="note-tag" title="Split from the old ' + esc(n.kind || '') + ' comment box; author from ' + esc(n.author_source || '') + '">imported</span>';
     if (n.updated_at) h += ' <span class="note-edited" title="Edited ' + esc(new Date(n.updated_at).toLocaleString("en-IN")) + '">(edited)</span>';
-    if (isOwnNote(n) && !editing && !t.editingId) h += ' <span class="note-edit-link" onclick="startEditNote(\'' + p.uid + '\',' + n.id + ')">Edit</span>';
+    if (isOwnNote(n) && !editing && !t.editingId) h += ' <span class="note-edit-link" onclick="startEditNote(\'' + p.uid + '\',\'' + esc(String(n.id)) + '\')">Edit</span>';
     h += '</div>';
     if (editing) {
       h += '<textarea class="note-edit" id="noteEdit_' + n.id + '" rows="2" oninput="editDraft(\'' + p.uid + '\',this)" onkeydown="editKey(event,\'' + p.uid + '\')"' + (t.savingEdit ? ' disabled' : '') + '>' + esc(t.editDraft) + '</textarea>';
